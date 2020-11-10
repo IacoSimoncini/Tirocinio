@@ -4,36 +4,51 @@ import numpy as np
 import cv2
 import sys
 import setup
+import camera
 
-# Variables
-hCam = ueye.HIDS(0)                         # First camera with the specified camera ID
-sInfo = ueye.SENSORINFO()                   # _Structure that fill with sensor's parameters
-cInfo = ueye.CAMINFO()                      
-pcImageMemory = ueye.c_mem_p()
-MemID = ueye.int()
-rectAOI = ueye.IS_RECT()
-pitch = ueye.INT()
-nBitsPerPixel = ueye.INT(24)                # 24: bits per pixel for color mode; take 8 bits per pixel for monochrome
-channels = 3                                # 3: channels for color mode(RGB); take 1 channel for monochrome
-m_nColorMode = ueye.INT()
-bytes_per_pixel = int(nBitsPerPixel / 8)
+Cam0 = camera.Cam(0)
+Cam1 = camera.Cam(1)
 
-# Setup camera's driver and color mode
-nRet = setup.SetupDriver(hCam, cInfo, sInfo)
-setup.SetupColor(sInfo, m_nColorMode, nBitsPerPixel, bytes_per_pixel)
+Cam0.Setup()
+Cam1.Setup()
 
-# Can be used to set the size and position of an "area of interest"(AOI) within an image
-nRet = ueye.is_AOI(hCam, ueye.IS_AOI_IMAGE_GET_AOI, rectAOI, ueye.sizeof(rectAOI))
-if nRet != ueye.IS_SUCCESS:
-    print("is_AOI ERROR")
+# Continuos image display
+while Cam0.nRet == ueye.IS_SUCCESS && Cam1.nRet == ueye.IS_SUCCESS:
 
-width = rectAOI.s32Width
-height = rectAOI.s32Height
+    # In order to display the image in an OpenCV window we need to:
+    # Extract the data of our image memory
+    array0 = ueye.get_data(Cam0.pcImageMemory, Cam0.widht, Cam0.height, Cam0.nBitsPerPixel, Cam0.pitch)
+    array1 = ueye.get_data(Cam1.pcImageMemory, Cam1.widht, Cam1.height, Cam1.nBitsPerPixel, Cam1.pitch)
 
-# Prints out some information about the camera and the sensor
-print("Camera model:\t\t", sInfo.strSensorName.decode('utf-8'))
-print("Camera serial no.:\t", cInfo.SerNo.decode('utf-8'))
-print("Maximum image width:\t", width)
-print("Maximum image height:\t", height)
-print()
+    # Reshape date in an numpy array
+    frame0 = np.reshape(array0, (Cam0.height.value, Cam0.width.value, Cam0.bytes_per_pixel))
+    frame1 = np.reshape(array1, (Cam1.height.value, Cam1.width.value, Cam1.bytes_per_pixel))
+
+    # Resize the image by a half
+    frame0 = cv2.resize(frame0, (0,0), fx=0.5, fy=0.5)
+    frame1 = cv2.resize(frame1, (0,0), fx=0.5, fy=0.5)
+
+    # Image data processing here
+
+
+    # Display image 
+    cv2.imshow("Camera0 view", frame0)
+    cv2.imshow("Camera1 view", frame1)
+
+    # Press q to quit the loop
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+
+# Releases an image memory that was allocated using is_AllocImageMem() and removes it from the driver management
+ueye.is_FreeImageMem(Cam0.cam, Cam0.pcImageMemory, Cam0.MemID)
+ueye.is_FreeImageMem(Cam1.cam, Cam1.pcImageMemory, Cam1.MemID)
+
+# Disables the hCam camera handle and releases the data structures and memory taken up by the uEye camera
+ueye.is_ExitCamera(Cam0.cam)
+ueye.is_ExitCamera(Cam1.cam)
+
+# Destroys the OpenCV windows
+cv2.destroyAllWindows()
+
 
