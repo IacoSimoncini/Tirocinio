@@ -1,5 +1,6 @@
 from pyueye import ueye
-
+from PIL import Image
+from time import strftime, localtime
 
 class Cam:
     def __init__(self, camID):
@@ -19,8 +20,11 @@ class Cam:
         self.width = 0
         self.height = 0
         self.nRet = 0
+        self.camID = camID
     
-    # Setup camera's driver and color mode
+    """
+    Setup camera's driver and color mode
+    """
     def Setup(self):
         # Starts the driver and establishes the connection to the camera
         self.nRet = ueye.is_InitCamera(self.cam, None)
@@ -40,7 +44,7 @@ class Cam:
         self.nRet = ueye.is_ResetToDefault(self.cam)
         if self.nRet != ueye.IS_SUCCESS:
             print("is_ResetToDefault ERROR")
-        
+
         # Set display mode to DIB
         self.nRet = ueye.is_SetDisplayMode(self.cam, ueye.IS_SET_DM_DIB)
         if self.nRet != ueye.IS_SUCCESS:
@@ -118,12 +122,45 @@ class Cam:
         if self.nRet != ueye.IS_SUCCESS:
             print("is_CaptureVideo ERROR")
 
-
         # Enables the queue mode for existing image memory sequences
         self.nRet = ueye.is_InquireImageMem(self.cam, self.pcImageMemory, self.MemID, self.width, self.height, self.nBitsPerPixel, self.pitch)
         if self.nRet != ueye.IS_SUCCESS:
             print("is_InquireImageMem ERROR")
         else:
             print("Press q  to leave the programm")
-            
+
+    """
+    Set the external trigger and capture the image saving it in the memory.
+    The trend of the trigger signal can be changed.
+    """
+    def Trigger(self):
+        # Activates the trigger input. If the camera is on standby, it will exit standby mode and start trigger mode.
+        # The function call sets the edge on which an action takes place.
+        # When the trigger input is active, is_FreezeVideo() function waits for an input of the trigger signal.
+
+        # Action on high low edge: IS_SET_TRIGGER_HI_LO
+        # Action on low high edge: IS_SET_TRIGGER_LO_HI
+        # Deactivates trigger: IS_SET_TRIGGER_OFF
+        self.nRet = ueye.is_SetExternalTrigger(self.cam, ueye.IS_SET_TRIGGER_LO_HI)
+        if self.nRet != ueye.IS_SUCCESS:
+            print("is_SetExternalTrigger ERROR")
+        
+        # Digitalize an immage and transfers it to the active image memory. In DirectDraw mode the image is digitized in the DirectDraw buffer.
+
+        # IS_WAIT: The function waits until an image is grabbed. IF the fourfold frame time is exceeded, this is acknowledge with a time otu.
+        # IS_DONT_WAIT: The function returns straight away. 
+        self.nRet = ueye.is_FreezeVideo(self.cam, ueye.IS_DONT_WAIT)
+        if self.nRet != ueye.IS_SUCCESS:
+            print("is_FreezeVideo ERROR")
+        else:
+            print(ueye.IS_GET_TRIGGER_STATUS)
+
+            # Reads the properties of the allocated image memory
+            self.nRet = ueye.is_InquireImageMem(self.cam, self.pcImageMemory, self.MemID, self.width, self.height, self.nBitsPerPixel, self.pitch)
+            if self.nRet != ueye.IS_SUCCESS:
+                print("is_InquireImageMem ERROR")
+            else:
+                filename = "Camera" + str(self.camID) + "-" + strftime("%m%d%Y_%H%M%S", localtime())
+                array = ueye.get_data(self.pcImageMemory, self.width, self.height, self.nBitsPerPixel, self.pitch)
+                Image.fromarray(array).save(filename + ".png", 'PNG')           
         
