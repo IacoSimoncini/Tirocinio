@@ -19,6 +19,10 @@ Cam0.Setup()
 Cam1.Setup()
 Cam2.Setup()
 
+Cam0.set_AutoGain()
+Cam1.set_AutoGain()
+Cam2.set_AutoGain()
+
 # Continuos image display
 while Cam0.nRet == ueye.IS_SUCCESS & Cam1.nRet == ueye.IS_SUCCESS & Cam2.nRet ==ueye.IS_SUCCESS:
 

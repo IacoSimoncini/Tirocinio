@@ -29,26 +29,26 @@ class Cam:
         # Starts the driver and establishes the connection to the camera
         self.nRet = ueye.is_InitCamera(self.cam, None)
         if self.nRet != ueye.IS_SUCCESS:
-            print("is_initCamera ERROR")
+            print("is_initCamera camera" + str(self.camID) + " ERROR")
         
         # Reads out the data hard-coded in the non-volatile camera memory and writes it to the data structure that cInfo points to
         self.nRet = ueye.is_GetCameraInfo(self.cam, self.cInfo)
         if self.nRet != ueye.IS_SUCCESS:
-           print("is_GetCameraInfo ERROR")
+           print("is_GetCameraInfo camera" + str(self.camID) + " ERROR")
 
         # You can query additional information about the sensor type used in the camera
         self.nRet = ueye.is_GetSensorInfo(self.cam, self.sInfo)
         if self.nRet != ueye.IS_SUCCESS:
-           print("is_GetSensorInfo ERROR")
+           print("is_GetSensorInfo camera" + str(self.camID) + " ERROR")
         
         self.nRet = ueye.is_ResetToDefault(self.cam)
         if self.nRet != ueye.IS_SUCCESS:
-            print("is_ResetToDefault ERROR")
+            print("is_ResetToDefault camera" + str(self.camID) + " ERROR")
 
         # Set display mode to DIB
         self.nRet = ueye.is_SetDisplayMode(self.cam, ueye.IS_SET_DM_DIB)
         if self.nRet != ueye.IS_SUCCESS:
-            print("is_SetDisplayMode ERROR")
+            print("is_SetDisplayMode camera" + str(self.camID) + " ERROR")
         
         # Set up the right color mode
         if int.from_bytes(self.sInfo.nColorMode.value, byteorder='big') == ueye.IS_COLORMODE_BAYER:
@@ -92,7 +92,7 @@ class Cam:
 
         self.nRet = ueye.is_AOI(self.cam, ueye.IS_AOI_IMAGE_GET_AOI, self.rectAOI, ueye.sizeof(self.rectAOI))
         if self.nRet != ueye.IS_SUCCESS:
-            print("is_AOI ERROR")
+            print("is_AOI camera" + str(self.camID) + " ERROR")
 
         self.width = self.rectAOI.s32Width
         self.height = self.rectAOI.s32Height
@@ -107,12 +107,12 @@ class Cam:
         # Allocates an image memory for an image having its dimensions defined by width and height and its color depth defined by nBitsPerPixel
         self.nRet = ueye.is_AllocImageMem(self.cam, self.width, self.height, self.nBitsPerPixel, self.pcImageMemory, self.MemID)
         if self.nRet != ueye.IS_SUCCESS:
-            print("is_AllocImageMem ERROR")
+            print("is_AllocImageMem camera" + str(self.camID) + " ERROR")
         else:
             # Makes the specified image memory the active memory
             self.nRet = ueye.is_SetImageMem(self.cam, self.pcImageMemory, self.MemID)
             if self.nRet != ueye.IS_SUCCESS:
-                print("is_SetImageMem ERROR")
+                print("is_SetImageMem camera" + str(self.camID) + " ERROR")
             else:
                 # Set the desired color mode
                 self.nRet = ueye.is_SetColorMode(self.cam, self.m_nColorMode)
@@ -120,12 +120,12 @@ class Cam:
         # Activates the camera's live video mode (free run mode)
         self.nRet = ueye.is_CaptureVideo(self.cam, ueye.IS_DONT_WAIT)
         if self.nRet != ueye.IS_SUCCESS:
-            print("is_CaptureVideo ERROR")
+            print("is_CaptureVideo camera" + str(self.camID) + " ERROR")
 
         # Enables the queue mode for existing image memory sequences
         self.nRet = ueye.is_InquireImageMem(self.cam, self.pcImageMemory, self.MemID, self.width, self.height, self.nBitsPerPixel, self.pitch)
         if self.nRet != ueye.IS_SUCCESS:
-            print("is_InquireImageMem ERROR")
+            print("is_InquireImageMem camera" + str(self.camID) + " ERROR")
         else:
             print("Press q  to leave the programm")
 
@@ -143,7 +143,7 @@ class Cam:
         # Deactivates trigger: IS_SET_TRIGGER_OFF
         self.nRet = ueye.is_SetExternalTrigger(self.cam, ueye.IS_SET_TRIGGER_LO_HI)
         if self.nRet != ueye.IS_SUCCESS:
-            print("is_SetExternalTrigger ERROR")
+            print("is_SetExternalTrigger camera" + str(self.camID) + " ERROR")
         
         # Digitalize an immage and transfers it to the active image memory. In DirectDraw mode the image is digitized in the DirectDraw buffer.
 
@@ -151,16 +151,36 @@ class Cam:
         # IS_DONT_WAIT: The function returns straight away. 
         self.nRet = ueye.is_FreezeVideo(self.cam, ueye.IS_DONT_WAIT)
         if self.nRet != ueye.IS_SUCCESS:
-            print("is_FreezeVideo ERROR")
+            print("is_FreezeVideo camera" + str(self.camID) + " ERROR")
         else:
             print(ueye.IS_GET_TRIGGER_STATUS)
 
             # Reads the properties of the allocated image memory
             self.nRet = ueye.is_InquireImageMem(self.cam, self.pcImageMemory, self.MemID, self.width, self.height, self.nBitsPerPixel, self.pitch)
             if self.nRet != ueye.IS_SUCCESS:
-                print("is_InquireImageMem ERROR")
+                print("is_InquireImageMem camera" + str(self.camID) + " ERROR")
             else:
                 filename = "Camera" + str(self.camID) + "-" + strftime("%m%d%Y_%H%M%S", localtime())
                 array = ueye.get_data(self.pcImageMemory, self.width, self.height, self.nBitsPerPixel, self.pitch)
-                Image.fromarray(array).save(filename + ".png", 'PNG')           
+                Image.fromarray(array).save(filename + ".png", 'PNG')
+                
+    """
+    Set the exposure.
+    """
+    def set_exposure(self, exposure):
+        new_exposure = ueye.c_double(exposure)
+        
+        # Set the exposure time to new_exposure
+        self.nRet = ueye.is_Exposure(self.cam, ueye.IS_EXPOSURE_CMD_SET_EXPOSURE, new_exposure, 8)
+        if nRet != ueye.IS_SUCCESS:
+            print("is_Exposure camera" + str(self.camID) + " ERROR")
+
+    """
+    Set auto gain
+    """
+    def set_AutoGain(self):
+        # Set the auto gain
+        self.nRet = ueye.is_SetAutoParameter(self.cam, ueye.IS_SET_ENABLE_AUTO_GAIN, ueye.double(1), ueye.double(0))
+        if self.nRet != ueye.IS_SUCCESS:
+            print("set_AutoGain camera" + str(self.camID) + " ERROR")
         
