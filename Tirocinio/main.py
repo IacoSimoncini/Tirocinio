@@ -30,17 +30,29 @@ Capture_Thread0 = tc.Capture_Thread(Cam0, coda)
 Capture_Thread1 = tc.Capture_Thread(Cam1, coda)
 Capture_Thread2 = tc.Capture_Thread(Cam2, coda)
 
+print("isRunning: " + str(Capture_Thread0.isRunning))
 
 # Continuos image display
-while Cam0.nRet == ueye.IS_SUCCESS & Cam1.nRet == ueye.IS_SUCCESS & Cam2.nRet ==ueye.IS_SUCCESS:
+while Cam0.nRet == ueye.IS_SUCCESS and Cam1.nRet == ueye.IS_SUCCESS and Cam2.nRet == ueye.IS_SUCCESS:
 
-    Capture_Thread0.start()
-    Capture_Thread1.start()
-    Capture_Thread2.start()
+    if Capture_Thread0.isRunning:
+        Capture_Thread0.start()
+        
+    if Capture_Thread1.isRunning:
+        Capture_Thread1.start()
 
-    Save_Thread0.start()
-    Save_Thread1.start()
-    Save_Thread2.start()
+    if Capture_Thread2.isRunning: 
+        Capture_Thread2.start()
+
+    if Save_Thread0.isRunning:
+        Save_Thread0.start()
+
+    if Save_Thread1.isRunning:
+        Save_Thread1.start()
+
+    if Save_Thread2.isRunning:
+        Save_Thread2.start()
+    
 
     """
     # In order to display the image in an OpenCV window we need to:

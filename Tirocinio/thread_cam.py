@@ -10,19 +10,39 @@ class Save_Thread(threading.Thread):
     def __init__(self, cam, list):
         self.camera = cam
         self.coda = list
+        self.killed = False
+        self.isRunning = False
 
     def run(self):
-        Save_Lock.acquire()
-        self.camera.Save(self.coda)
-        Save_Lock.release()
+        if self.killed:
+            raise SystemExit
+        else:
+            self.isRunning = True
+            Save_Lock.acquire()
+            self.camera.Save(self.coda)
+            Save_Lock.release()
+            self.isRunning = False
+    
+    def kill(self):
+        self.killed = True
 
 
 class Capture_Thread(threading.Thread):
     def __init__(self, cam, list):
         self.camera = cam
         self.coda = list
+        self.killed = False
+        self.isRunning = False
 
     def run(self):
-        Capture_Lock.acquire()
-        self.camera = cam.Cature(self.coda)
-        Capture_Lock.release()
+        if self.killed:
+            raise SystemExit
+        else:
+            self.isRunning = True
+            Capture_Lock.acquire()
+            self.camera = cam.Cature(self.coda)
+            Capture_Lock.release()
+            self.isRunning = False
+        
+    def kill(self):
+        self.killed = True
