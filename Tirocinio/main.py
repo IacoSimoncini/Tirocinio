@@ -4,8 +4,11 @@ import numpy as np
 import cv2
 import sys
 import camera
+import thread_cam as tc
 
 id = [0, 1, 2]
+
+coda = []
 
 dev = ["Camera" + str(id[0]), "Camera" + str(id[1]) + "Camera" + str(id[2])]
 
@@ -19,13 +22,27 @@ Cam0.Setup()
 Cam1.Setup()
 Cam2.Setup()
 
-Cam0.set_AutoGain()
-Cam1.set_AutoGain()
-Cam2.set_AutoGain()
+Save_Thread0 = tc.Save_Thread(Cam0, coda)
+Save_Thread1 = tc.Save_Thread(Cam1, coda)
+Save_Thread2 = tc.Save_Thread(Cam2, coda)
+
+Capture_Thread0 = tc.Capture_Thread(Cam0, coda)
+Capture_Thread1 = tc.Capture_Thread(Cam1, coda)
+Capture_Thread2 = tc.Capture_Thread(Cam2, coda)
+
 
 # Continuos image display
 while Cam0.nRet == ueye.IS_SUCCESS & Cam1.nRet == ueye.IS_SUCCESS & Cam2.nRet ==ueye.IS_SUCCESS:
 
+    Capture_Thread0.start()
+    Capture_Thread1.start()
+    Capture_Thread2.start()
+
+    Save_Thread0.start()
+    Save_Thread1.start()
+    Save_Thread2.start()
+
+    """
     # In order to display the image in an OpenCV window we need to:
     # Extract the data of our image memory
     array0 = ueye.get_data(Cam0.pcImageMemory, Cam0.widht, Cam0.height, Cam0.nBitsPerPixel, Cam0.pitch)
@@ -49,11 +66,12 @@ while Cam0.nRet == ueye.IS_SUCCESS & Cam1.nRet == ueye.IS_SUCCESS & Cam2.nRet ==
     cv2.imshow("Camera0 view", frame0)
     cv2.imshow("Camera1 view", frame1)
     cv2.imshow("Camera2 view", frame2)
-
     # Press q to quit the loop
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
+    """
 
+    
 
 # Releases an image memory that was allocated using is_AllocImageMem() and removes it from the driver management
 ueye.is_FreeImageMem(Cam0.cam, Cam0.pcImageMemory, Cam0.MemID)
@@ -66,6 +84,6 @@ ueye.is_ExitCamera(Cam1.cam)
 ueye.is_ExitCamera(Cam2.cam)
 
 # Destroys the OpenCV windows
-cv2.destroyAllWindows()
+# cv2.destroyAllWindows()
 
 

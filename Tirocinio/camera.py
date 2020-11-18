@@ -1,6 +1,7 @@
 from pyueye import ueye
 from PIL import Image
-from time import strftime, localtime
+import time
+import threading
 
 class Cam:
     def __init__(self, camID):
@@ -49,6 +50,11 @@ class Cam:
         self.nRet = ueye.is_SetDisplayMode(self.cam, ueye.IS_SET_DM_DIB)
         if self.nRet != ueye.IS_SUCCESS:
             print("is_SetDisplayMode camera" + str(self.camID) + " ERROR")
+
+        # Set the auto gain
+        self.nRet = ueye.is_SetAutoParameter(self.cam, ueye.IS_SET_ENABLE_AUTO_GAIN, ueye.double(1), ueye.double(0))
+        if self.nRet != ueye.IS_SUCCESS:
+            print("set_AutoGain camera" + str(self.camID) + " ERROR")
         
         # Set up the right color mode
         if int.from_bytes(self.sInfo.nColorMode.value, byteorder='big') == ueye.IS_COLORMODE_BAYER:
@@ -145,42 +151,45 @@ class Cam:
         if self.nRet != ueye.IS_SUCCESS:
             print("is_SetExternalTrigger camera" + str(self.camID) + " ERROR")
         
+        
+
+
+    def Capture(self, list):
         # Digitalize an immage and transfers it to the active image memory. In DirectDraw mode the image is digitized in the DirectDraw buffer.
 
         # IS_WAIT: The function waits until an image is grabbed. IF the fourfold frame time is exceeded, this is acknowledge with a time otu.
         # IS_DONT_WAIT: The function returns straight away. 
-        self.nRet = ueye.is_FreezeVideo(self.cam, ueye.IS_DONT_WAIT)
+        self.nRet = ueye.is_FreezeVideo(self.cam, ueye.IS_WAIT)
         if self.nRet != ueye.IS_SUCCESS:
             print("is_FreezeVideo camera" + str(self.camID) + " ERROR")
         else:
             print(ueye.IS_GET_TRIGGER_STATUS)
 
-            # Reads the properties of the allocated image memory
-            self.nRet = ueye.is_InquireImageMem(self.cam, self.pcImageMemory, self.MemID, self.width, self.height, self.nBitsPerPixel, self.pitch)
-            if self.nRet != ueye.IS_SUCCESS:
-                print("is_InquireImageMem camera" + str(self.camID) + " ERROR")
-            else:
-                filename = "Camera" + str(self.camID) + "-" + strftime("%m%d%Y_%H%M%S", localtime())
-                array = ueye.get_data(self.pcImageMemory, self.width, self.height, self.nBitsPerPixel, self.pitch)
-                Image.fromarray(array).save(filename + ".png", 'PNG')
-                
+        # Reads the properties of the allocated image memory
+        self.nRet = ueye.is_InquireImageMem(self.cam, self.pcImageMemory, self.MemID, self.width, self.height, self.nBitsPerPixel, self.pitch)
+        if self.nRet != ueye.IS_SUCCESS:
+            print("is_InquireImageMem camera" + str(self.camID) + " ERROR")
+        else:
+            array = ueye.get_data(self.pcImageMemory, self.width, self.height, self.nBitsPerPixel, self.pitch)
+            list = list + array
+
+
+    def Save(self, list):
+        if(len(list)):
+            filename = "Camera" + str(self.camID) + "-" + time.time()
+            array = list.pop(0)
+            Image.fromarray(array).save(filename + ".png", 'PNG')
+        else:
+            pass
+
+
     """
     Set the exposure.
     """
-    def set_exposure(self, exposure):
+    def Set_exposure(self, exposure):
         new_exposure = ueye.c_double(exposure)
         
         # Set the exposure time to new_exposure
         self.nRet = ueye.is_Exposure(self.cam, ueye.IS_EXPOSURE_CMD_SET_EXPOSURE, new_exposure, 8)
         if nRet != ueye.IS_SUCCESS:
             print("is_Exposure camera" + str(self.camID) + " ERROR")
-
-    """
-    Set auto gain
-    """
-    def set_AutoGain(self):
-        # Set the auto gain
-        self.nRet = ueye.is_SetAutoParameter(self.cam, ueye.IS_SET_ENABLE_AUTO_GAIN, ueye.double(1), ueye.double(0))
-        if self.nRet != ueye.IS_SUCCESS:
-            print("set_AutoGain camera" + str(self.camID) + " ERROR")
-        
