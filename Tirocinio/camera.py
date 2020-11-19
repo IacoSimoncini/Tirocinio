@@ -23,10 +23,9 @@ class Cam:
         self.nRet = 0
         self.camID = camID
     
-    """
-    Setup camera's driver and color mode
-    """
     def Setup(self):
+        # Setup camera's driver and color mode
+
         # Starts the driver and establishes the connection to the camera
         self.nRet = ueye.is_InitCamera(self.cam, None)
         if self.nRet != ueye.IS_SUCCESS:
@@ -122,44 +121,33 @@ class Cam:
             else:
                 # Set the desired color mode
                 self.nRet = ueye.is_SetColorMode(self.cam, self.m_nColorMode)
+                if self.nRet != ueye.IS_SUCCESS:
+                    print("is_SetColorMode camera" + str(self.camID) + " ERROR")
     
         # Activates the camera's live video mode (free run mode)
-        self.nRet = ueye.is_CaptureVideo(self.cam, ueye.IS_DONT_WAIT)
+        # self.nRet = ueye.is_CaptureVideo(self.cam, ueye.IS_DONT_WAIT)
+        # if self.nRet != ueye.IS_SUCCESS:
+        #    print("is_CaptureVideo camera" + str(self.camID) + " ERROR")
+
+        # Set the external trigger and capture the image saving it in the memory
+        self.nRet = ueye.is_SetExternalTrigger(self.cam, ueye.IS_SET_TRIGGER_LO_HI)
         if self.nRet != ueye.IS_SUCCESS:
-            print("is_CaptureVideo camera" + str(self.camID) + " ERROR")
+            print("is_SetExternalTrigger camera" + str(self.camID) + " ERROR")
 
         # Enables the queue mode for existing image memory sequences
         self.nRet = ueye.is_InquireImageMem(self.cam, self.pcImageMemory, self.MemID, self.width, self.height, self.nBitsPerPixel, self.pitch)
         if self.nRet != ueye.IS_SUCCESS:
             print("is_InquireImageMem camera" + str(self.camID) + " ERROR")
         else:
-            print("Press q  to leave the programm")
-
-    """
-    Set the external trigger and capture the image saving it in the memory.
-    The trend of the trigger signal can be changed.
-    """
-    def Trigger(self):
-        # Activates the trigger input. If the camera is on standby, it will exit standby mode and start trigger mode.
-        # The function call sets the edge on which an action takes place.
-        # When the trigger input is active, is_FreezeVideo() function waits for an input of the trigger signal.
-
-        # Action on high low edge: IS_SET_TRIGGER_HI_LO
-        # Action on low high edge: IS_SET_TRIGGER_LO_HI
-        # Deactivates trigger: IS_SET_TRIGGER_OFF
-        self.nRet = ueye.is_SetExternalTrigger(self.cam, ueye.IS_SET_TRIGGER_LO_HI)
-        if self.nRet != ueye.IS_SUCCESS:
-            print("is_SetExternalTrigger camera" + str(self.camID) + " ERROR")
-        
-        
-
+            print("Press Ctrl + C to leave the programm")
+           
 
     def Capture(self, list):
         # Digitalize an immage and transfers it to the active image memory. In DirectDraw mode the image is digitized in the DirectDraw buffer.
 
         # IS_WAIT: The function waits until an image is grabbed. IF the fourfold frame time is exceeded, this is acknowledge with a time otu.
         # IS_DONT_WAIT: The function returns straight away. 
-        self.nRet = ueye.is_FreezeVideo(self.cam, ueye.IS_WAIT)
+        self.nRet = ueye.is_FreezeVideo(self.cam, ueye.IS_DONT_WAIT)
         if self.nRet != ueye.IS_SUCCESS:
             print("is_FreezeVideo camera" + str(self.camID) + " ERROR")
         else:
@@ -171,6 +159,7 @@ class Cam:
             print("is_InquireImageMem camera" + str(self.camID) + " ERROR")
         else:
             array = ueye.get_data(self.pcImageMemory, self.width, self.height, self.nBitsPerPixel, self.pitch)
+            # Add the image to the queue
             list = list + array
 
 
@@ -183,10 +172,10 @@ class Cam:
             pass
 
 
-    """
-    Set the exposure.
-    """
     def Set_exposure(self, exposure):
+        """
+        Set the exposure.
+        """
         new_exposure = ueye.c_double(exposure)
         
         # Set the exposure time to new_exposure

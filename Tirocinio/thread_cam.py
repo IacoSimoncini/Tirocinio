@@ -3,13 +3,19 @@ import camera
 from pyueye import ueye
 import numpy as np
 
+# Lock variables
 Save_Lock = threading.Lock()
 Capture_Lock = threading.Lock()
 
+
 class Save_Thread(threading.Thread):
+    """ 
+    Thread for saving images in png format 
+    """
+
     def __init__(self, cam, list):
         self.camera = cam
-        self.coda = list
+        self.queue = list
         self.killed = False
         self.isRunning = False
 
@@ -19,7 +25,7 @@ class Save_Thread(threading.Thread):
         else:
             self.isRunning = True
             Save_Lock.acquire()
-            self.camera.Save(self.coda)
+            self.camera.Save(self.queue)
             Save_Lock.release()
             self.isRunning = False
     
@@ -28,9 +34,13 @@ class Save_Thread(threading.Thread):
 
 
 class Capture_Thread(threading.Thread):
+    """ 
+    Thread for capturing images
+    """
+
     def __init__(self, cam, list):
         self.camera = cam
-        self.coda = list
+        self.queue = list
         self.killed = False
         self.isRunning = False
 
@@ -40,7 +50,7 @@ class Capture_Thread(threading.Thread):
         else:
             self.isRunning = True
             Capture_Lock.acquire()
-            self.camera = cam.Cature(self.coda)
+            self.camera = cam.Cature(self.queue)
             Capture_Lock.release()
             self.isRunning = False
         
