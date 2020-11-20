@@ -56,9 +56,8 @@ try:
         if not Save_Thread2.isRunning:
             Save_Thread2.start()
 
-
 except KeyboardInterrupt:
-    # Press Ctrl + C to stop the while loop
+    # Press Ctrl + C to stop the while loop and kill all the threads
     Capture_Thread0.kill()
     Capture_Thread1.kill()
     Capture_Thread2.kill()
