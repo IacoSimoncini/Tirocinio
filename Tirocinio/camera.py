@@ -22,7 +22,7 @@ class Cam:
         self.height = 0
         self.nRet = 0
         self.camID = camID
-    
+
     def Setup(self):
         # Setup camera's driver and color mode
 

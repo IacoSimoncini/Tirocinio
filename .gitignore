@@ -2,3 +2,4 @@
 .vscode/.ropeproject/config.py
 .vscode/.ropeproject/objectdb
 Tirocinio/__pycache__/
+.vscode/launch.json
