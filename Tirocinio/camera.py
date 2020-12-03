@@ -130,9 +130,13 @@ class Cam:
         #    print("is_CaptureVideo camera" + str(self.camID) + " ERROR")
 
         # Set the external trigger and capture the image saving it in the memory
-        self.nRet = ueye.is_SetExternalTrigger(self.cam, ueye.IS_SET_TRIGGER_LO_HI)
+        #self.nRet = ueye.is_SetExternalTrigger(self.cam, ueye.IS_SET_TRIGGER_LO_HI)
+        #if self.nRet != ueye.IS_SUCCESS:
+        #    print("is_SetExternalTrigger camera" + str(self.camID) + " ERROR")
+
+        self.nRet = ueye.is_CaptureVideo(self.cam, ueye.IS_DONT_WAIT)
         if self.nRet != ueye.IS_SUCCESS:
-            print("is_SetExternalTrigger camera" + str(self.camID) + " ERROR")
+            print("is_CaptureVideo Error")
 
         # Enables the queue mode for existing image memory sequences
         self.nRet = ueye.is_InquireImageMem(self.cam, self.pcImageMemory, self.MemID, self.width, self.height, self.nBitsPerPixel, self.pitch)
@@ -147,28 +151,35 @@ class Cam:
 
         # IS_WAIT: The function waits until an image is grabbed. IF the fourfold frame time is exceeded, this is acknowledge with a time otu.
         # IS_DONT_WAIT: The function returns straight away. 
+        """
         self.nRet = ueye.is_FreezeVideo(self.cam, ueye.IS_DONT_WAIT)
         if self.nRet != ueye.IS_SUCCESS:
             print("is_FreezeVideo camera" + str(self.camID) + " ERROR")
         else:
-            print(ueye.IS_GET_TRIGGER_STATUS)
+            print("Trigger status: " + ueye.IS_GET_TRIGGER_STATUS)
 
         # Reads the properties of the allocated image memory
         self.nRet = ueye.is_InquireImageMem(self.cam, self.pcImageMemory, self.MemID, self.width, self.height, self.nBitsPerPixel, self.pitch)
         if self.nRet != ueye.IS_SUCCESS:
             print("is_InquireImageMem camera" + str(self.camID) + " ERROR")
         else:
-            array = ueye.get_data(self.pcImageMemory, self.width, self.height, self.nBitsPerPixel, self.pitch)
-            # Add the image to the queue
-            list = list + array
+            """
+        array = ueye.get_data(self.pcImageMemory, self.width, self.height, self.nBitsPerPixel, self.pitch, copy=False)
+        # Add the image to the queue
+        print(array)
+        list.append(array.copy())
+        print("Added to the queue \n")
 
 
     def Save(self, list):
         if(len(list)):
             filename = "Camera" + str(self.camID) + "-" + time.time()
             array = list.pop(0)
+            #rescaled = (255.0 / array.max() * (array - array.min())).astype(np.uint8)
             Image.fromarray(array).save(filename + ".png", 'PNG')
+            print("Save list \n")
         else:
+            print("Not saved \n")
             pass
 
 

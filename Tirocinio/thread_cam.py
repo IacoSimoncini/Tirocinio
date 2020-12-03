@@ -4,8 +4,7 @@ from pyueye import ueye
 import numpy as np
 
 # Lock variables
-Save_Lock = threading.Lock()
-Capture_Lock = threading.Lock()
+Lock = threading.Lock()
 
 
 class Save_Thread(threading.Thread):
@@ -14,6 +13,7 @@ class Save_Thread(threading.Thread):
     """
 
     def __init__(self, cam, list):
+        super(Save_Thread, self).__init__()
         self.camera = cam
         self.queue = list
         self.killed = False
@@ -24,9 +24,9 @@ class Save_Thread(threading.Thread):
             raise SystemExit
         else:
             self.isRunning = True
-            Save_Lock.acquire()
+            Lock.acquire()
             self.camera.Save(self.queue)
-            Save_Lock.release()
+            Lock.release()
             self.isRunning = False
     
     def kill(self):
@@ -39,6 +39,7 @@ class Capture_Thread(threading.Thread):
     """
 
     def __init__(self, cam, list):
+        super(Capture_Thread, self).__init__()
         self.camera = cam
         self.queue = list
         self.killed = False
@@ -49,9 +50,9 @@ class Capture_Thread(threading.Thread):
             raise SystemExit
         else:
             self.isRunning = True
-            Capture_Lock.acquire()
-            self.camera = cam.Cature(self.queue)
-            Capture_Lock.release()
+            Lock.acquire()
+            self.camera.Cature(self.queue)
+            Lock.release()
             self.isRunning = False
         
     def kill(self):
