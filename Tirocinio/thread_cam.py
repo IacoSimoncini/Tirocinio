@@ -51,7 +51,7 @@ class Capture_Thread(threading.Thread):
         else:
             self.isRunning = True
             Lock.acquire()
-            self.camera.Cature(self.queue)
+            self.camera.Capture(self.queue)
             Lock.release()
             self.isRunning = False
         
