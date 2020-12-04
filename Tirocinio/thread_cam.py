@@ -27,7 +27,6 @@ class Save_Thread(threading.Thread):
             Lock.acquire()
             self.camera.Save(self.queue)
             Lock.release()
-            self.isRunning = False
     
     def kill(self):
         self.killed = True
@@ -53,7 +52,6 @@ class Capture_Thread(threading.Thread):
             Lock.acquire()
             self.camera.Capture(self.queue)
             Lock.release()
-            self.isRunning = False
         
     def kill(self):
         self.killed = True

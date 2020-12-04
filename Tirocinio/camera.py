@@ -173,7 +173,7 @@ class Cam:
 
     def Save(self, list):
         if(len(list)):
-            filename = "Camera" + str(self.camID) + "-" + time.time()
+            filename = "Camera" + str(self.camID) + "-" + str(time.time())
             array = list.pop(0)
             #rescaled = (255.0 / array.max() * (array - array.min())).astype(np.uint8)
             Image.fromarray(array).save(filename + ".png", 'PNG')
