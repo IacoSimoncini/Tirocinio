@@ -3,7 +3,8 @@ from pyueye import ueye
 import numpy as np
 import sys
 import camera
-import thread_cam as tc
+import thread_capture as tc
+import thread_save as ts
 import time
 from PIL import Image
 
@@ -13,9 +14,7 @@ id = [1, 2, 3]
 # Queue of images
 queue = []
 
-Lock = True
-
-dev = ["Camera" + str(id[0]), "Camera" + str(id[1]) + "Camera" + str(id[2])]
+dev = ["Camera" + str(id[0]), "Camera" + str(id[1]), "Camera" + str(id[2])]
 
 # Initialize Cameras with specific id
 Cam0 = camera.Cam(id[0])
@@ -28,43 +27,26 @@ Cam0.Setup()
 #Cam2.Setup()
 
 # Initialize saving threads
-#Save_Thread0 = tc.Save_Thread(Cam0, queue)
-#Save_Thread1 = tc.Save_Thread(Cam1, queue)
-#Save_Thread2 = tc.Save_Thread(Cam2, queue)
+Save_Thread0 = ts.Save_Thread(Cam0, queue)
+#Save_Thread1 = ts.Save_Thread(Cam1, queue)
+#Save_Thread2 = ts.Save_Thread(Cam2, queue)
 
 # Initialize capture threads
-#Capture_Thread0 = tc.Capture_Thread(Cam0, queue)
+Capture_Thread0 = tc.Capture_Thread(Cam0, queue)
 #Capture_Thread1 = tc.Capture_Thread(Cam1, queue)
 #Capture_Thread2 = tc.Capture_Thread(Cam2, queue)
+
+Capture_Thread0.start()
+Save_Thread0.start()
 
 # Continuous capture and saving of the image
 try:
     while Cam0.nRet == ueye.IS_SUCCESS: 
     #and Cam1.nRet == ueye.IS_SUCCESS and Cam2.nRet == ueye.IS_SUCCESS:
 
-        if Lock:
-            array = ueye.get_data(Cam0.pcImageMemory, Cam0.width, Cam0.height, Cam0.nBitsPerPixel, Cam0.pitch, copy=False)
-            # Add the image to the queue
-            print(array)
-            queue.append(array.copy())
-            print("Added to the queue \n")
-            Lock = False
-
-        if not Lock:
-            if(len(queue)):
-                filename = "Camera" + str(Cam0.camID) + "-" + str(time.time())
-                array = queue.pop(0)
-                reshape = np.reshape(array,(Cam0.height.value, Cam0.width.value, Cam0.bytes_per_pixel))
-                img = Image.fromarray(reshape).save("/home/fieldtronics/swim4all/Tirocinio/Photo/" + filename + ".png", "PNG")
-                print("Save list \n")
-            else:
-                print("Not saved \n")
-                pass
-            Lock = True
     # Starts threads if they are not in a running state
-        #if not Capture_Thread0.isRunning:
-        #    Capture_Thread0.start()
-
+        if not Capture_Thread0.isRunning:
+            print("notrunning")
         # if not Capture_Thread1.isRunning:
 #            Capture_Thread1.start()
 
@@ -73,7 +55,6 @@ try:
 
         #if not Save_Thread0.isRunning:
         #    Save_Thread0.start()
-
 #        if not Save_Thread1.isRunning:
  #           Save_Thread1.start()
 
