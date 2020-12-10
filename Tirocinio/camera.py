@@ -25,7 +25,7 @@ class Cam:
 
     def Setup(self):
         # Setup camera's driver and color mode
-
+        
         # Starts the driver and establishes the connection to the camera
         self.nRet = ueye.is_InitCamera(self.cam, None)
         if self.nRet != ueye.IS_SUCCESS:
@@ -55,6 +55,8 @@ class Cam:
         if self.nRet != ueye.IS_SUCCESS:
             print("set_AutoGain camera" + str(self.camID) + " ERROR")
         
+        print()
+
         # Set up the right color mode
         if int.from_bytes(self.sInfo.nColorMode.value, byteorder='big') == ueye.IS_COLORMODE_BAYER:
             # Setup the coor depth to the current windows setting
@@ -65,7 +67,7 @@ class Cam:
             print("\tnBitsPerPixel: \t\t", self.nBitsPerPixel)
             print("\tbytes_per_pixel: \t\t", self.bytes_per_pixel)
             print()
-    
+  
         elif int.from_bytes(self.sInfo.nColorMode.value, byteorder='big') == ueye.IS_COLORMODE_CBYCRY:
             # for color camera models use RGB32 mode
             self.m_nColorMode = ueye.IS_CM_BGRA8_PACKED
@@ -144,6 +146,7 @@ class Cam:
             print("is_InquireImageMem camera" + str(self.camID) + " ERROR")
         else:
             print("Press Ctrl + C to leave the programm")
+            print()
            
 
     def Capture(self, list):
