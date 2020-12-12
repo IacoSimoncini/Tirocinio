@@ -79,21 +79,12 @@ class Cam:
         self.nRet = ueye.is_AddToSequence(self.cam , self.pcImageMemory ,  self.MemID)
         if self.nRet != ueye.IS_SUCCESS:
             print("is_AddToSequence ERROR")
-    
-        # Activates the camera's live video mode (free run mode)
-        # self.nRet = ueye.is_CaptureVideo(self.cam, ueye.IS_DONT_WAIT)
-        # if self.nRet != ueye.IS_SUCCESS:
-        #    print("is_CaptureVideo camera" + str(self.camID) + " ERROR")
 
-        # Set the external trigger and capture the image saving it in the memory
-        #self.nRet = ueye.is_SetExternalTrigger(self.cam, ueye.IS_SET_TRIGGER_LO_HI)
-        #if self.nRet != ueye.IS_SUCCESS:
-        #    print("is_SetExternalTrigger camera" + str(self.camID) + " ERROR")
-
+        """
         self.nRet = ueye.is_CaptureVideo(self.cam, ueye.IS_DONT_WAIT)
         if self.nRet != ueye.IS_SUCCESS:
             print("is_CaptureVideo Error")
-
+           """  
         # Enables the queue mode for existing image memory sequences
         self.nRet = ueye.is_InquireImageMem(self.cam, self.pcImageMemory, self.MemID, self.width, self.height, self.nBitsPerPixel, self.pitch)
         if self.nRet != ueye.IS_SUCCESS:
@@ -101,31 +92,41 @@ class Cam:
         else:
             print("Press Ctrl + C to leave the programm")
             print()
-           
 
     def Capture(self, queue):
+        
+        self.nRet = ueye.is_EnableEvent(self.cam, ueye.IS_SET_EVENT_FRAME)
+        if self.nRet != ueye.IS_SUCCESS:
+            print("is_EnableEvent camera " + str(self.camID) + " ERROR")
+        
+        self.nRet = ueye.is_SetExternalTrigger(self.cam, ueye.IS_SET_TRIGGER_LO_HI)
+        if self.nRet != ueye.IS_SUCCESS:
+            print("is_SetExternalTrigger camera " + str(self.camID) + " ERROR")
+        
         # Digitalize an immage and transfers it to the active image memory. In DirectDraw mode the image is digitized in the DirectDraw buffer.
 
-        # IS_WAIT: The function waits until an image is grabbed. IF the fourfold frame time is exceeded, this is acknowledge with a time otu.
+        # IS_WAIT: The function waits until an image is grabbed. IF the fourfold frame time is exceeded, this is acknowledge with a time out.
         # IS_DONT_WAIT: The function returns straight away. 
-        """
         self.nRet = ueye.is_FreezeVideo(self.cam, ueye.IS_DONT_WAIT)
         if self.nRet != ueye.IS_SUCCESS:
             print("is_FreezeVideo camera" + str(self.camID) + " ERROR")
         else:
-            print("Trigger status: " + ueye.IS_GET_TRIGGER_STATUS)
-
-        # Reads the properties of the allocated image memory
-        self.nRet = ueye.is_InquireImageMem(self.cam, self.pcImageMemory, self.MemID, self.width, self.height, self.nBitsPerPixel, self.pitch)
+            print("Trigger status: " + str(ueye.IS_GET_TRIGGER_STATUS))
+        
+        self.nRet = ueye.is_ForceTrigger(self.cam)
         if self.nRet != ueye.IS_SUCCESS:
-            print("is_InquireImageMem camera" + str(self.camID) + " ERROR")
-        else:
-            """
+            print("is_ForceTrigger camera" +str(self.camID) + " ERROR")
+        
+        self.nRet = ueye.is_DisableEvent(self.cam, ueye.IS_SET_EVENT_FRAME)
+        if self.nRet != ueye.IS_SUCCESS:
+            print("is_DisableEvent camera " + str(self.camID) + " ERROR")
+
         self.nRet = ueye.is_InquireImageMem(self.cam, self.pcImageMemory, self.MemID, self.width, self.height, self.nBitsPerPixel, self.pitch)
         if self.nRet != ueye.IS_SUCCESS:
             print("is_InquireImageMem camera" + str(self.camID) + " ERROR")
         
         array = ueye.get_data(self.pcImageMemory, self.width, self.height, self.nBitsPerPixel, self.pitch, copy=False)
+        
         # Add the image to the queue
         print(array)
         queue.append(array.copy())

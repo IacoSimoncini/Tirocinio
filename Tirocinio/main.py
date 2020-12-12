@@ -47,6 +47,7 @@ try:
     # Starts threads if they are not in a running state
         if not Capture_Thread0.isRunning:
             print("notrunning")
+        
         # if not Capture_Thread1.isRunning:
 #            Capture_Thread1.start()
 
