@@ -3,6 +3,8 @@ from PIL import Image
 import time
 import threading
 import numpy as np
+import json
+from utility import uEyeException
 
 class Cam:
     def __init__(self, camID):
@@ -25,105 +27,128 @@ class Cam:
         self.nRet = 0
         self.camID = camID
 
+    def handle(self):
+        return self.cam
+
     def Setup(self):
         # Setup camera's driver and color mode
-        
+
         # Starts the driver and establishes the connection to the camera
         self.nRet = ueye.is_InitCamera(self.cam, None)
         if self.nRet != ueye.IS_SUCCESS:
-            print("is_initCamera camera" + str(self.camID) + " ERROR")
+            raise uEyeException(self.nRet)
         
         # Reads out the data hard-coded in the non-volatile camera memory and writes it to the data structure that cInfo points to
         self.nRet = ueye.is_GetCameraInfo(self.cam, self.cInfo)
         if self.nRet != ueye.IS_SUCCESS:
-           print("is_GetCameraInfo camera" + str(self.camID) + " ERROR")
+           raise uEyeException(self.nRet)
 
         # You can query additional information about the sensor type used in the camera
         self.nRet = ueye.is_GetSensorInfo(self.cam, self.sInfo)
         if self.nRet != ueye.IS_SUCCESS:
-           print("is_GetSensorInfo camera" + str(self.camID) + " ERROR")
+           raise uEyeException(self.nRet)
         
+        self.nRet = ueye.is_SetAutoParameter(self.cam, ueye.IS_SET_ENABLE_AUTO_GAIN, ueye.DOUBLE(1), ueye.DOUBLE(0))
+        if self.nRet != ueye.IS_SUCCESS:
+            raise uEyeException(self.nRet)
+
+        self.nRet = ueye.is_SetAutoParameter(self.cam, ueye.IS_SET_ENABLE_AUTO_SHUTTER, ueye.DOUBLE(1), ueye.DOUBLE(0))
+        if self.nRet != ueye.IS_SUCCESS:
+            raise uEyeException(self.nRet)
+        
+        self.nRet = ueye.is_Exposure(self.cam, ueye.IS_EXPOSURE_CMD_GET_EXPOSURE, ueye.DOUBLE(10), ueye.sizeof(ueye.DOUBLE(10)))
+        if self.nRet != ueye.IS_SUCCESS:
+            raise uEyeException(self.nRet)
+            
         # Set display mode to DIB
         self.nRet = ueye.is_SetDisplayMode(self.cam, ueye.IS_SET_DM_DIB)
         if self.nRet != ueye.IS_SUCCESS:
-            print("is_SetDisplayMode camera" + str(self.camID) + " ERROR")
+            raise uEyeException(self.nRet)
 
         # Set Color Mode to BGR8
         self.nRet = ueye.is_SetColorMode(self.cam, ueye.IS_CM_BGR8_PACKED)
         if self.nRet != ueye.IS_SUCCESS:
-            print("setColorMode camera " + str(self.camID) + " ERROR")
+            raise uEyeException(self.nRet)
 
-        print("NRET: " + str(self.nRet))
-        
-        self.nRet = ueye.is_AOI(self.cam, ueye.IS_AOI_IMAGE_GET_AOI, self.rectAOI, ueye.sizeof(self.rectAOI))
+        self.nRet = self.set_aoi_from_json()
         if self.nRet != ueye.IS_SUCCESS:
-            print("is_AOI camera" + str(self.camID) + " ERROR")
+            raise uEyeException(self.nRet)
 
         self.width = self.rectAOI.s32Width
         self.height = self.rectAOI.s32Height
-
+        
         # Prints out some information about the camera and the sensor
         print("Camera model:\t\t", self.sInfo.strSensorName.decode('utf-8'))
         print("Camera serial no.:\t", self.cInfo.SerNo.decode('utf-8'))
         print("Maximum image width:\t", self.width)
         print("Maximum image height:\t", self.height)
         print()
-
         
         # Allocates an image memory for an image having its dimensions defined by width and height and its color depth defined by nBitsPerPixel
         self.nRet = ueye.is_AllocImageMem(self.cam, self.width, self.height, self.nBitsPerPixel, self.pcImageMemory, self.MemID)
         if self.nRet != ueye.IS_SUCCESS:
-            print("is_AllocImageMem camera" + str(self.camID) + " ERROR")
-        
+            raise uEyeException(self.nRet)
+       
         #Add to Sequence 
         self.nRet = ueye.is_AddToSequence(self.cam , self.pcImageMemory ,  self.MemID)
         if self.nRet != ueye.IS_SUCCESS:
-            print("is_AddToSequence ERROR")
+            raise uEyeException(self.nRet)
 
-        """
-        self.nRet = ueye.is_CaptureVideo(self.cam, ueye.IS_DONT_WAIT)
-        if self.nRet != ueye.IS_SUCCESS:
-            print("is_CaptureVideo Error")
-           """  
         # Enables the queue mode for existing image memory sequences
         self.nRet = ueye.is_InquireImageMem(self.cam, self.pcImageMemory, self.MemID, self.width, self.height, self.nBitsPerPixel, self.pitch)
         if self.nRet != ueye.IS_SUCCESS:
-            print("is_InquireImageMem camera" + str(self.camID) + " ERROR")
+            raise uEyeException(self.nRet)
         else:
             print("Press Ctrl + C to leave the programm")
             print()
 
+    def free_run_mode(self):
+        self.nRet = ueye.is_CaptureVideo(self.cam, ueye.IS_DONT_WAIT)
+        if self.nRet != ueye.IS_SUCCESS:
+            raise uEyeException(self.nRet)
+        
+    def set_aoi_from_json(self):
+        """
+        Set area of interest from config.json file
+        """
+        with open('/home/fieldtronics/swim4all/Tirocinio/Tirocinio/config.json') as json_file:
+            data = json.load(json_file)
+            for j in data['config']:
+                self.rectAOI.s32Width = ueye.int(j['width'])
+                self.rectAOI.s32Height = ueye.int(j['height'])
+                self.rectAOI.s32X = ueye.int(j['x'])
+                self.rectAOI.s32Y = ueye.int(j['y'])
+        
+        return ueye.is_AOI(self.cam, ueye.IS_AOI_IMAGE_SET_AOI, self.rectAOI, ueye.sizeof(self.rectAOI))
+        
     def Capture(self, queue):
         
         self.nRet = ueye.is_EnableEvent(self.cam, ueye.IS_SET_EVENT_FRAME)
         if self.nRet != ueye.IS_SUCCESS:
-            print("is_EnableEvent camera " + str(self.camID) + " ERROR")
+            raise uEyeException(self.nRet)
         
         self.nRet = ueye.is_SetExternalTrigger(self.cam, ueye.IS_SET_TRIGGER_LO_HI)
         if self.nRet != ueye.IS_SUCCESS:
-            print("is_SetExternalTrigger camera " + str(self.camID) + " ERROR")
+            raise uEyeException(self.nRet)
         
         # Digitalize an immage and transfers it to the active image memory. In DirectDraw mode the image is digitized in the DirectDraw buffer.
-
-        # IS_WAIT: The function waits until an image is grabbed. IF the fourfold frame time is exceeded, this is acknowledge with a time out.
-        # IS_DONT_WAIT: The function returns straight away. 
-        self.nRet = ueye.is_FreezeVideo(self.cam, ueye.IS_DONT_WAIT)
+        self.nRet = self.freeze_video()
         if self.nRet != ueye.IS_SUCCESS:
-            print("is_FreezeVideo camera" + str(self.camID) + " ERROR")
+            raise uEyeException(self.nRet)
         else:
             print("Trigger status: " + str(ueye.IS_GET_TRIGGER_STATUS))
         
         self.nRet = ueye.is_ForceTrigger(self.cam)
         if self.nRet != ueye.IS_SUCCESS:
-            print("is_ForceTrigger camera" +str(self.camID) + " ERROR")
+            raise uEyeException(self.nRet)
         
         self.nRet = ueye.is_DisableEvent(self.cam, ueye.IS_SET_EVENT_FRAME)
         if self.nRet != ueye.IS_SUCCESS:
-            print("is_DisableEvent camera " + str(self.camID) + " ERROR")
+            raise uEyeException(self.nRet)
 
         self.nRet = ueye.is_InquireImageMem(self.cam, self.pcImageMemory, self.MemID, self.width, self.height, self.nBitsPerPixel, self.pitch)
         if self.nRet != ueye.IS_SUCCESS:
-            print("is_InquireImageMem camera" + str(self.camID) + " ERROR")
+            raise uEyeException(self.nRet)
         
         array = ueye.get_data(self.pcImageMemory, self.width, self.height, self.nBitsPerPixel, self.pitch, copy=False)
         
@@ -143,13 +168,12 @@ class Cam:
             print("Image not saved \n")
             pass
 
-    def Set_exposure(self, exposure):
-        """
-        Set the exposure.
-        """
-        new_exposure = ueye.c_double(exposure)
-        
-        # Set the exposure time to new_exposure
-        self.nRet = ueye.is_Exposure(self.cam, ueye.IS_EXPOSURE_CMD_SET_EXPOSURE, new_exposure, 8)
-        if self.nRet != ueye.IS_SUCCESS:
-            print("is_Exposure camera" + str(self.camID) + " ERROR")
+    def freeze_video(self, wait=False):
+        wait_param = ueye.IS_WAIT if wait else ueye.IS_DONT_WAIT
+        return ueye.is_FreezeVideo(self.cam, wait_param)
+
+    def exit(self):
+        if self.cam is not None:
+            self.nRet = ueye.is_ExitCamera(self.cam)
+        if self.nRet == ueye.IS_SUCCESS:
+            self.cam = None
