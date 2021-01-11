@@ -23,29 +23,31 @@ Cam0 = camera.Cam(id[0])
 Cam0.Setup()
 
 # Initialize saving threads
-Save_Thread0 = ts.Save_Thread(Cam0, queue)
+#Save_Thread0 = ts.Save_Thread(Cam0, queue)
 
 # Initialize capture threads
 Capture_Thread0 = tc.Capture_Thread(Cam0, queue)
 
 Capture_Thread0.start()
-Save_Thread0.start()
+#Save_Thread0.start()
 
 # Continuous capture and saving of the image
 try:
     while Cam0.nRet == ueye.IS_SUCCESS: 
     #and Cam1.nRet == ueye.IS_SUCCESS and Cam2.nRet == ueye.IS_SUCCESS:
 
-    # Starts threads if they are not in a running state
+        # Starts threads if they are not in a running state
         if not Capture_Thread0.isRunning:
             print("notrunning")
-        
 
 except KeyboardInterrupt:
     # Press Ctrl + C to stop the while loop and kill all the threads
     Capture_Thread0.kill()
-
-    Save_Thread0.kill()
+    while(Capture_Thread0.isRunning):
+        pass
+    #Save_Thread0.kill()
+    #while(Save_Thread0.isRunning):
+    #    pass
 
 
 # Releases an image memory that was allocated using is_AllocImageMem() and removes it from the driver management

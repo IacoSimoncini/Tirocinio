@@ -2,7 +2,7 @@ import threading
 import camera 
 from pyueye import ueye
 import numpy as np
-import time
+import timeit
 
 # Lock variables
 Lock = threading.Lock()
@@ -19,23 +19,27 @@ class Capture_Thread(threading.Thread):
         self.killed = False
         self.isRunning = False
         self.isStarted = False
+        self.t_old = timeit.default_timer()
 
     def run(self):
         self.isStarted = True
         self.isRunning = True
 
         while not self.killed:
-            start = time.time()
             Lock.acquire()
-            self.camera.Capture(self.queue)
-            Lock.release()
-            end = time.time()
-            print("Time Capture Thread: " + str(end - start))
+            try:
+                self.camera.Capture(self.queue)
+            finally:
+                Lock.release()
+            t = timeit.default_timer()
+            fps = 1/(t - self.t_old)
+            self.t_old = t
+            print("Fps: ", round(fps, 2))
 
         if self.killed:
             self.isRunning = False
             raise SystemExit
-            
+
         self.isRunning = False
 
     def kill(self):

@@ -3,7 +3,7 @@ import camera
 from pyueye import ueye
 import thread_capture as tc
 import numpy as np
-import time
+import timeit
 
 class Save_Thread(threading.Thread):
     """ 
@@ -17,19 +17,24 @@ class Save_Thread(threading.Thread):
         self.killed = False
         self.isRunning = False
         self.isStarted = False
+        self.t_old = timeit.default_timer()
 
     def run(self):
         self.isStarted = True
         self.isRunning = True
 
         while not self.killed:
-            start = time.time()
             tc.Lock.acquire()
-            self.camera.Save(self.queue)
-            tc.Lock.release()
-            end = time.time()
-            print("Time Save Thread: " + str(end - start))
-        
+            try:
+                self.camera.Save(self.queue)
+            finally:
+                tc.Lock.release()
+            
+            t = timeit.default_timer()
+            time_save = 1/(t - self.t_old)
+            print("Time save: ", time_save)
+            self.t_old = t
+
         if self.killed:
             self.isRunning = False
             raise SystemExit
