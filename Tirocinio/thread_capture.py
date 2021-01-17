@@ -3,9 +3,9 @@ import camera
 from pyueye import ueye
 import numpy as np
 import timeit
+import asyncio
 
-# Lock variables
-Lock = threading.Lock()
+sem = asyncio.Semaphore(value=1)
 
 class Capture_Thread(threading.Thread):
     """ 
@@ -24,21 +24,13 @@ class Capture_Thread(threading.Thread):
     def run(self):
         self.isStarted = True
         self.isRunning = True
-
         while not self.killed:
-            Lock.acquire()
+            sem.acquire()
             try:
                 self.camera.Capture(self.queue)
+                print("Fps: ",self.camera.FPS)
             finally:
-                Lock.release()
-            t = timeit.default_timer()
-            fps = 1/(t - self.t_old)
-            self.t_old = t
-            print("Fps: ", round(fps, 2))
-
-        if self.killed:
-            self.isRunning = False
-            raise SystemExit
+                sem.release()
 
         self.isRunning = False
 

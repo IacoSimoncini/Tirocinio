@@ -4,8 +4,9 @@ import time
 import threading
 import numpy as np
 import json
-from utility import uEyeException
+from utility import uEyeException, param_from_json
 import ctypes
+import timeit
 
 class Cam:
     def __init__(self, camID):
@@ -30,7 +31,12 @@ class Cam:
         self.nRet = 0
         self.camID = camID
         self.current_fps = 0
-
+        self.FPS = 0
+        self.gain = 0
+        self.rGain = 0
+        self.bGain = 0
+        self.gGain = 0
+        
     def handle(self):
         return self.cam
 
@@ -53,13 +59,14 @@ class Cam:
            raise uEyeException(self.nRet)
         
         # Set Auto Gain
-        self.nRet = ueye.is_SetAutoParameter(self.cam, ueye.IS_SET_ENABLE_AUTO_GAIN, ueye.DOUBLE(1), ueye.DOUBLE(0))
-        if self.nRet != ueye.IS_SUCCESS:
-            raise uEyeException(self.nRet)
-        
-        # Take params from json
-        self.param_from_json()
+        #self.set_gain_auto(1)
 
+        # Take params from json
+        param_from_json(self)
+
+        # Set Gain
+        self.set_gain(self.gain, self.rGain, self.gGain, self.bGain)
+        
         # Set Pixelclock
         self.set_pixelclock(self.pixelclock)
         
@@ -67,7 +74,11 @@ class Cam:
         self.set_exposure(self.exposure)  
 
         # Set fps
-        #self.set_fps(self.current_fps)      
+        #self.set_fps(self.current_fps)     
+
+        self.nRet = ueye.is_SetExternalTrigger(self.cam, ueye.IS_SET_TRIGGER_LO_HI)
+        if self.nRet != ueye.IS_SUCCESS:
+            raise uEyeException(self.nRet) 
 
         # Set display mode to DIB
         self.nRet = ueye.is_SetDisplayMode(self.cam, ueye.IS_SET_DM_DIB)
@@ -80,7 +91,10 @@ class Cam:
             raise uEyeException(self.nRet)
 
         # Set AOI
-        self.nRet = ueye.is_AOI(self.cam, ueye.IS_AOI_IMAGE_SET_AOI, self.rectAOI, ueye.sizeof(self.rectAOI))
+        self.nRet = ueye.is_AOI(self.cam, 
+                                ueye.IS_AOI_IMAGE_SET_AOI, 
+                                self.rectAOI,
+                                ueye.sizeof(self.rectAOI))
         if self.nRet != ueye.IS_SUCCESS:
             raise uEyeException(self.nRet)
 
@@ -95,6 +109,10 @@ class Cam:
         print("Exposure:\t\t", self.get_exposure())
         print("Frame rate:\t\t", self.current_fps)
         print("PixelClock:\t\t", self.get_pixelclock())
+        print("Gain:\t\t\t", self.get_gain())
+        print("rGain:\t\t\t", self.rGain)
+        print("bGain:\t\t\t", self.bGain)
+        print("gGain:\t\t\t", self.gGain)
         print()
        
         # Allocates an image memory for an image having its dimensions defined by width and height and its color depth defined by nBitsPerPixel
@@ -107,6 +125,9 @@ class Cam:
         if self.nRet != ueye.IS_SUCCESS:
             raise uEyeException(self.nRet)
 
+        # Free run mode
+        #self.free_run_mode()
+        
         # Enables the queue mode for existing image memory sequences
         self.nRet = ueye.is_InquireImageMem(self.cam, self.pcImageMemory, self.MemID, self.width, self.height, self.nBitsPerPixel, self.pitch)
         if self.nRet != ueye.IS_SUCCESS:
@@ -114,6 +135,68 @@ class Cam:
         else:
             print("Press \'Ctrl + C\' to leave the programm")
             print()
+
+    def set_gain(self, mGain, rGain, gGain, bGain):
+        """
+        Set gain
+
+        Params
+        ======
+        mGain: integer
+            master gain value
+        rGain: integer
+            red gain value, default value 0
+        gGain: integer
+            green gain value, default value 0
+        bGain: integer
+            blue gain value, default value 0
+        """
+        self.nRet = ueye.is_SetHardwareGain(self.cam, 
+                                            mGain, 
+                                            rGain, 
+                                            gGain,
+                                            bGain)
+        if self.nRet != ueye.IS_SUCCESS:
+            raise uEyeException(self.nRet)
+    
+    def get_gain(self):
+        """
+        Get the current gain.
+        Returns
+        =======
+        gain: number
+            Current gain
+        """
+        self.gain = ueye.is_SetHardwareGain(self.cam, 
+                                            ueye.IS_GET_MASTER_GAIN, 
+                                            ueye.IS_IGNORE_PARAMETER, 
+                                            ueye.IS_IGNORE_PARAMETER,
+                                            ueye.IS_IGNORE_PARAMETER)
+        return self.gain 
+
+    def set_gain_auto(self, toggle):
+        """
+        Set/unset auto gain.
+        Params
+        ======
+        toggle: integer
+            1 activate the auto gain, 0 deactivate it
+        """
+        value = ueye.c_double(toggle)
+        value_to_return = ueye.c_double()
+        self.nRet = ueye.is_SetAutoParameter(self.cam,
+                                    ueye.IS_SET_ENABLE_AUTO_GAIN,
+                                    value,
+                                    value_to_return)
+        if self.nRet != ueye.IS_SUCCESS:
+            raise uEyeException(self.nRet)
+
+    def get_framerate(self):
+        new_fps = ueye.c_double(self.current_fps)
+        self.nRet = ueye.is_GetFramesPerSecond(self.cam, new_fps)
+        if self.nRet != ueye.IS_SUCCESS:
+            raise uEyeException(self.nRet)
+        print(new_fps.value)
 
     def set_fps(self, fps):
         """
@@ -243,62 +326,55 @@ class Cam:
             raise uEyeException(self.nRet)
         return pixelclock
 
-
-    def param_from_json(self):
-        """
-        Set parameters from config.json file
-        """
-        with open('/home/fieldtronics/swim4all/Tirocinio/Tirocinio/config.json') as json_file:
-            data = json.load(json_file)
-            for j in data['config']:
-                self.rectAOI.s32Width = ueye.int(j['width'])
-                self.rectAOI.s32Height = ueye.int(j['height'])
-                self.rectAOI.s32X = ueye.int(j['x'])
-                self.rectAOI.s32Y = ueye.int(j['y'])
-                self.exposure = j['exp']
-                self.pixelclock = j['pixclock']
-                self.current_fps = j['fps']
-            
-    def Capture(self, queue):
-        
+    def enable_event(self):
         self.nRet = ueye.is_EnableEvent(self.cam, ueye.IS_SET_EVENT_FRAME)
         if self.nRet != ueye.IS_SUCCESS:
             raise uEyeException(self.nRet)
-        
-        self.nRet = ueye.is_SetExternalTrigger(self.cam, ueye.IS_SET_TRIGGER_LO_HI)
+
+    def disable_event(self):
+        self.nRet = ueye.is_DisableEvent(self.cam, ueye.IS_SET_EVENT_FRAME)
         if self.nRet != ueye.IS_SUCCESS:
             raise uEyeException(self.nRet)
+
+    def snapshot(self):
+        self.nRet = ueye.is_CaptureVideo(self.cam, ueye.IS_WAIT)
+        if self.nRet != ueye.IS_SUCCESS:
+            raise uEyeException(self.nRet)
+        self.nRet = ueye.is_StopLiveVideo(self.cam, ueye.IS_DONT_WAIT)
+        if self.nRet != ueye.IS_SUCCESS:
+            raise uEyeException(self.nRet)
+        array = ueye.get_data(self.pcImageMemory, self.width, self.height, self.nBitsPerPixel, self.pitch, copy=True)
+        reshape = np.reshape(array, (self.height.value, self.width.value, self.bytes_per_pixel))
+        filename = "Camera" + str(self.camID) + "-" + str(time.time())
+        Image.fromarray(reshape).save("/home/fieldtronics/swim4all/Tirocinio/Photo/" + filename + ".png", "PNG")
+
+    def Capture(self, list):
+        
+        t_old = timeit.default_timer()
 
         # Digitalize an immage and transfers it to the active image memory. In DirectDraw mode the image is digitized in the DirectDraw buffer.
         self.nRet = ueye.is_FreezeVideo(self.cam, ueye.IS_WAIT)
         if self.nRet != ueye.IS_SUCCESS:
             raise uEyeException(self.nRet)
-        
-        #self.nRet = ueye.is_ForceTrigger(self.cam)
-        #if self.nRet != ueye.IS_SUCCESS:
-        #    raise uEyeException(self.nRet)
 
-        self.nRet = ueye.is_DisableEvent(self.cam, ueye.IS_SET_EVENT_FRAME)
-        if self.nRet != ueye.IS_SUCCESS:
-            raise uEyeException(self.nRet)
+        t = timeit.default_timer()
+        self.FPS = 1/(t - t_old)
+        t_old = t
 
-        self.nRet = ueye.is_InquireImageMem(self.cam, self.pcImageMemory, self.MemID, self.width, self.height, self.nBitsPerPixel, self.pitch)
-        if self.nRet != ueye.IS_SUCCESS:
-            raise uEyeException(self.nRet)
-        
-        array = ueye.get_data(self.pcImageMemory, self.width, self.height, self.nBitsPerPixel, self.pitch, copy=False)
+        array = ueye.get_data(self.pcImageMemory, self.width, self.height, self.nBitsPerPixel, self.pitch, copy=True)
 
         # Add the image to the queue
-        #print(array)
-        #queue.append(array.copy())
-        #print("Added to the queue \n")
+        list.append(array.copy())
 
     def Save(self, list):
         if(len(list)):
+            t_save_old = timeit.default_timer()
             filename = "Camera" + str(self.camID) + "-" + str(time.time())
             array = list.pop(0)
             reshape = np.reshape(array, (self.height.value, self.width.value, self.bytes_per_pixel))
             Image.fromarray(reshape).save("/home/fieldtronics/swim4all/Tirocinio/Photo/" + filename + ".png", "PNG")
+            t_save = timeit.default_timer()
+            print("Salvataggio: ",t_save - t_save_old)
         else:
             pass
 
@@ -307,3 +383,7 @@ class Cam:
             self.nRet = ueye.is_ExitCamera(self.cam)
         if self.nRet == ueye.IS_SUCCESS:
             self.cam = None
+
+    def free_run_acquisition(self):
+        img = ueye.get_data(self.pcImageMemory, self.width, self.height, self.nBitsPerPixel, self.pitch, copy=True)
+        reshape = np.reshape(img, (self.height.value, self.width.value, self.bytes_per_pixel))

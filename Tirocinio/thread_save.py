@@ -5,6 +5,7 @@ import thread_capture as tc
 import numpy as np
 import timeit
 
+
 class Save_Thread(threading.Thread):
     """ 
     Thread for saving images in png format 
@@ -24,16 +25,12 @@ class Save_Thread(threading.Thread):
         self.isRunning = True
 
         while not self.killed:
-            tc.Lock.acquire()
+            tc.sem.acquire()
             try:
                 self.camera.Save(self.queue)
             finally:
-                tc.Lock.release()
-            
-            t = timeit.default_timer()
-            time_save = 1/(t - self.t_old)
-            print("Time save: ", time_save)
-            self.t_old = t
+                tc.sem.release()
+                
 
         if self.killed:
             self.isRunning = False
