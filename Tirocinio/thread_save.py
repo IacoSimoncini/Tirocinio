@@ -11,32 +11,24 @@ class Save_Thread(threading.Thread):
     Thread for saving images in png format 
     """
 
-    def __init__(self, cam, list):
+    def __init__(self, cam, queue, lock):
         super(Save_Thread, self).__init__()
         self.camera = cam
-        self.queue = list
+        self.queue = queue
+        self.lock = lock
         self.killed = False
         self.isRunning = False
-        self.isStarted = False
+        self.joined = False
         self.t_old = timeit.default_timer()
 
     def run(self):
-        self.isStarted = True
         self.isRunning = True
 
         while not self.killed:
-            tc.sem.acquire()
-            try:
+            with self.lock:
+                self.joined = True
                 self.camera.Save(self.queue)
-            finally:
-                tc.sem.release()
-                
 
-        if self.killed:
-            self.isRunning = False
-            raise SystemExit
-
-        self.isRunning = False
 
     def kill(self):
-        self.killed = True
+        self.isRunning = False

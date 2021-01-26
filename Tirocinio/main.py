@@ -4,12 +4,15 @@ import asyncio
 import camera
 import thread_capture as tc
 import thread_save as ts
+import threading
 
 # Cameras' id
 id = [1, 2, 3]
 
 # Queue of images
 queue = []
+
+Lock = threading.Lock()
 
 dev = ["Camera" + str(id[0]), "Camera" + str(id[1]), "Camera" + str(id[2])]
 
@@ -19,8 +22,8 @@ Cam0 = camera.Cam(id[0])
 # Setup cameras 
 Cam0.Setup()
 
-p = tc.Capture_Thread(Cam0, queue)
-s = ts.Save_Thread(Cam0, queue)
+p = tc.Capture_Thread(Cam0, queue, Lock)
+s = ts.Save_Thread(Cam0, queue, Lock)
 p.start()
 s.start()
 
@@ -28,11 +31,11 @@ s.start()
 while Cam0.nRet == ueye.IS_SUCCESS: 
     try:
 
-        if(not p.isRunning):
+        if not p.joined:
             p.join()
             print("p joined")
 
-        if(not p.isRunning):
+        if not s.joined:
             s.join()
             print("s joined")
         

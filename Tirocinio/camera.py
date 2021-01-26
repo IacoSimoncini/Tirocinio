@@ -348,7 +348,7 @@ class Cam:
         filename = "Camera" + str(self.camID) + "-" + str(time.time())
         Image.fromarray(reshape).save("/home/fieldtronics/swim4all/Tirocinio/Photo/" + filename + ".png", "PNG")
 
-    def Capture(self, list):
+    def Capture(self, queue):
         
         t_old = timeit.default_timer()
 
@@ -364,17 +364,17 @@ class Cam:
         array = ueye.get_data(self.pcImageMemory, self.width, self.height, self.nBitsPerPixel, self.pitch, copy=True)
 
         # Add the image to the queue
-        list.append(array.copy())
+        queue.append(array.copy())
 
-    def Save(self, list):
-        if(len(list)):
+    def Save(self, queue):
+        if(len(queue)):
             t_save_old = timeit.default_timer()
             filename = "Camera" + str(self.camID) + "-" + str(time.time())
-            array = list.pop(0)
+            array = queue.pop(0)
             reshape = np.reshape(array, (self.height.value, self.width.value, self.bytes_per_pixel))
             Image.fromarray(reshape).save("/home/fieldtronics/swim4all/Tirocinio/Photo/" + filename + ".png", "PNG")
             t_save = timeit.default_timer()
-            print("Salvataggio: ",t_save - t_save_old)
+            print("Salvataggio: ", t_save - t_save_old)
         else:
             pass
 
@@ -387,3 +387,4 @@ class Cam:
     def free_run_acquisition(self):
         img = ueye.get_data(self.pcImageMemory, self.width, self.height, self.nBitsPerPixel, self.pitch, copy=True)
         reshape = np.reshape(img, (self.height.value, self.width.value, self.bytes_per_pixel))
+
