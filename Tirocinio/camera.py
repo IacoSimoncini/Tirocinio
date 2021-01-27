@@ -348,41 +348,12 @@ class Cam:
         filename = "Camera" + str(self.camID) + "-" + str(time.time())
         Image.fromarray(reshape).save("/home/fieldtronics/swim4all/Tirocinio/Photo/" + filename + ".png", "PNG")
 
-    def Capture(self, queue):
-        
-        t_old = timeit.default_timer()
-
-        # Digitalize an immage and transfers it to the active image memory. In DirectDraw mode the image is digitized in the DirectDraw buffer.
-        self.nRet = ueye.is_FreezeVideo(self.cam, ueye.IS_WAIT)
-        if self.nRet != ueye.IS_SUCCESS:
-            raise uEyeException(self.nRet)
-
-        t = timeit.default_timer()
-        self.FPS = 1/(t - t_old)
-        t_old = t
-
-        array = ueye.get_data(self.pcImageMemory, self.width, self.height, self.nBitsPerPixel, self.pitch, copy=True)
-
-        # Add the image to the queue
-        queue.append(array.copy())
-
-    def Save(self, queue):
-        if(len(queue)):
-            t_save_old = timeit.default_timer()
-            filename = "Camera" + str(self.camID) + "-" + str(time.time())
-            array = queue.pop(0)
-            reshape = np.reshape(array, (self.height.value, self.width.value, self.bytes_per_pixel))
-            Image.fromarray(reshape).save("/home/fieldtronics/swim4all/Tirocinio/Photo/" + filename + ".png", "PNG")
-            t_save = timeit.default_timer()
-            print("Salvataggio: ", t_save - t_save_old)
-        else:
-            pass
-
     def exit(self):
         if self.cam is not None:
             self.nRet = ueye.is_ExitCamera(self.cam)
         if self.nRet == ueye.IS_SUCCESS:
             self.cam = None
+        print("Camera exit.")
 
     def free_run_acquisition(self):
         img = ueye.get_data(self.pcImageMemory, self.width, self.height, self.nBitsPerPixel, self.pitch, copy=True)

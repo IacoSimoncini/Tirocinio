@@ -12,8 +12,6 @@ id = [1, 2, 3]
 # Queue of images
 queue = []
 
-Lock = threading.Lock()
-
 dev = ["Camera" + str(id[0]), "Camera" + str(id[1]), "Camera" + str(id[2])]
 
 # Initialize Cameras with specific id
@@ -22,8 +20,8 @@ Cam0 = camera.Cam(id[0])
 # Setup cameras 
 Cam0.Setup()
 
-p = tc.Capture_Thread(Cam0, queue, Lock)
-s = ts.Save_Thread(Cam0, queue, Lock)
+p = tc.Capture_Thread(Cam0, queue)
+s = ts.Save_Thread(Cam0, queue)
 p.start()
 s.start()
 
@@ -35,9 +33,9 @@ while Cam0.nRet == ueye.IS_SUCCESS:
             p.join()
             print("p joined")
 
-        if not s.joined:
-            s.join()
-            print("s joined")
+        #if not s.joined:
+            #s.join()
+            #print("s joined")
         
     except Exception:
         p.kill()
