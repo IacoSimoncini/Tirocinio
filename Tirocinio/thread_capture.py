@@ -21,7 +21,6 @@ class Capture_Thread(Thread):
 
     def run(self):
         while self.isRunning:
-            self.joined = True
             t_old = timeit.default_timer()
 
             # Digitalize an immage and transfers it to the active image memory. In DirectDraw mode the image is digitized in the DirectDraw buffer.
@@ -39,3 +38,6 @@ class Capture_Thread(Thread):
 
     def kill(self):
         self.isRunning = False
+
+    def isJoined(self):
+        self.joined = True

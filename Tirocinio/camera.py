@@ -4,12 +4,12 @@ import time
 import threading
 import numpy as np
 import json
-from utility import uEyeException, param_from_json
+from utility import uEyeException, param_from_json, Rect, ImageBuffer, MemoryInfo
 import ctypes
 import timeit
 
 class Cam:
-    def __init__(self, camID):
+    def __init__(self, camID, buffer_count=3):
         # Variables
         self.cam = ueye.HIDS(camID)
         self.sInfo = ueye.SENSORINFO()
@@ -23,6 +23,8 @@ class Cam:
         self.m_nColorMode = ueye.IS_CM_RGBA12_UNPACKED
         self.nBitsPerPixel
         self.bytes_per_pixel = int(self.nBitsPerPixel / 8)
+        self.buffer_count = buffer_count
+        self.img_buffer = []
 
         self.pixelclock = 0
         self.exposure = 0
@@ -48,16 +50,20 @@ class Cam:
         if self.nRet != ueye.IS_SUCCESS:
             raise uEyeException(self.nRet)
         
-        # Reads out the data hard-coded in the non-volatile camera memory and writes it to the data structure that cInfo points to
-        self.nRet = ueye.is_GetCameraInfo(self.cam, self.cInfo)
+        self.nRet = ueye.is_SetExternalTrigger(self.cam, ueye.IS_SET_TRIGGER_LO_HI)
         if self.nRet != ueye.IS_SUCCESS:
-           raise uEyeException(self.nRet)
+            raise uEyeException(self.nRet) 
 
         # You can query additional information about the sensor type used in the camera
         self.nRet = ueye.is_GetSensorInfo(self.cam, self.sInfo)
         if self.nRet != ueye.IS_SUCCESS:
            raise uEyeException(self.nRet)
-        
+
+        # Reads out the data hard-coded in the non-volatile camera memory and writes it to the data structure that cInfo points to
+        self.nRet = ueye.is_GetCameraInfo(self.cam, self.cInfo)
+        if self.nRet != ueye.IS_SUCCESS:
+           raise uEyeException(self.nRet)
+
         # Set Auto Gain
         #self.set_gain_auto(1)
 
@@ -75,10 +81,6 @@ class Cam:
 
         # Set fps
         #self.set_fps(self.current_fps)     
-
-        self.nRet = ueye.is_SetExternalTrigger(self.cam, ueye.IS_SET_TRIGGER_LO_HI)
-        if self.nRet != ueye.IS_SUCCESS:
-            raise uEyeException(self.nRet) 
 
         # Set display mode to DIB
         self.nRet = ueye.is_SetDisplayMode(self.cam, ueye.IS_SET_DM_DIB)
@@ -114,27 +116,15 @@ class Cam:
         print("bGain:\t\t\t", self.bGain)
         print("gGain:\t\t\t", self.gGain)
         print()
-       
-        # Allocates an image memory for an image having its dimensions defined by width and height and its color depth defined by nBitsPerPixel
-        self.nRet = ueye.is_AllocImageMem(self.cam, self.width, self.height, self.nBitsPerPixel, self.pcImageMemory, self.MemID)
-        if self.nRet != ueye.IS_SUCCESS:
-            raise uEyeException(self.nRet)
-       
-        # Add to Sequence 
-        self.nRet = ueye.is_AddToSequence(self.cam , self.pcImageMemory ,  self.MemID)
+
+        self.alloc()
+
+        self.nRet = ueye.is_CaptureVideo(self.cam, ueye.IS_WAIT)
         if self.nRet != ueye.IS_SUCCESS:
             raise uEyeException(self.nRet)
 
-        # Free run mode
-        #self.free_run_mode()
-        
-        # Enables the queue mode for existing image memory sequences
-        self.nRet = ueye.is_InquireImageMem(self.cam, self.pcImageMemory, self.MemID, self.width, self.height, self.nBitsPerPixel, self.pitch)
-        if self.nRet != ueye.IS_SUCCESS:
-            raise uEyeException(self.nRet)
-        else:
-            print("Press \'Ctrl + C\' to leave the programm")
-            print()
+        print("Press \'Ctrl + C\' to leave the programm")
+        print()
 
     def set_gain(self, mGain, rGain, gGain, bGain):
         """
@@ -173,6 +163,20 @@ class Cam:
                                             ueye.IS_IGNORE_PARAMETER,
                                             ueye.IS_IGNORE_PARAMETER)
         return self.gain 
+
+    def get_aoi(self):
+        """
+        Get the current area of interest.
+        Returns
+        =======
+        rect: Rect object
+            Area of interest
+        """
+        ueye.is_AOI(self.cam, ueye.IS_AOI_IMAGE_GET_AOI, self.rectAOI, ueye.sizeof(self.rectAOI))
+        return Rect(self.rectAOI.s32X.value,
+                    self.rectAOI.s32Y.value,
+                    self.rectAOI.s32Width.value,
+                    self.rectAOI.s32Height.value)
 
     def set_gain_auto(self, toggle):
         """
@@ -326,27 +330,97 @@ class Cam:
             raise uEyeException(self.nRet)
         return pixelclock
 
-    def enable_event(self):
-        self.nRet = ueye.is_EnableEvent(self.cam, ueye.IS_SET_EVENT_FRAME)
+    def trigger_miss(self):
+        error_code = ueye.is_CameraStatus(self.cam, 
+                                            ueye.IS_TRIGGER_MISSED,
+                                            ueye.IS_GET_STATUS)
+        print("error_code: ",error_code)
+
+    def alloc(self):
+        """
+        Allocate memory for futur images.
+        """
+        rect = self.get_aoi()
+        bpp = self.nBitsPerPixel
+
+        for buff in self.img_buffer:
+            self.nRet = ueye.is_FreeImageMem(self.cam, buff.mem_ptr, buff.mem_id)
+            if self.nRet != ueye.IS_SUCCESS:
+                raise uEyeException(self.nRet)
+        
+        self.img_buffer = []
+
+        for i in range(self.buffer_count):
+            buff = ImageBuffer()
+            ueye.is_AllocImageMem(self.cam,
+                                  rect.width,
+                                  rect.height,
+                                  bpp,
+                                  buff.mem_ptr,
+                                  buff.mem_id)
+            ueye.is_AddToSequence(self.cam, buff.mem_ptr, buff.mem_id)
+            self.img_buffer.append(buff)
+
+        self.nRet = ueye.is_InitImageQueue(self.cam, 0)
         if self.nRet != ueye.IS_SUCCESS:
             raise uEyeException(self.nRet)
 
-    def disable_event(self):
-        self.nRet = ueye.is_DisableEvent(self.cam, ueye.IS_SET_EVENT_FRAME)
-        if self.nRet != ueye.IS_SUCCESS:
-            raise uEyeException(self.nRet)
 
-    def snapshot(self):
-        self.nRet = ueye.is_CaptureVideo(self.cam, ueye.IS_WAIT)
-        if self.nRet != ueye.IS_SUCCESS:
-            raise uEyeException(self.nRet)
-        self.nRet = ueye.is_StopLiveVideo(self.cam, ueye.IS_DONT_WAIT)
-        if self.nRet != ueye.IS_SUCCESS:
-            raise uEyeException(self.nRet)
-        array = ueye.get_data(self.pcImageMemory, self.width, self.height, self.nBitsPerPixel, self.pitch, copy=True)
-        reshape = np.reshape(array, (self.height.value, self.width.value, self.bytes_per_pixel))
-        filename = "Camera" + str(self.camID) + "-" + str(time.time())
-        Image.fromarray(reshape).save("/home/fieldtronics/swim4all/Tirocinio/Photo/" + filename + ".png", "PNG")
+    def capture_status(self):
+        info = ueye.c_uint()
+        self.nRet = ueye.is_CaptureStatus(self.cam, 
+                                          ueye.IS_CAPTURE_STATUS_INFO_CMD_GET,
+                                          info,
+                                          ueye.sizeof(info))
+
+    def Capture(self, queue):
+
+        t_old = time.time()
+        
+        timeout = 1000
+
+
+        while True:
+
+            # Digitalize an immage and transfers it to the active image memory. In DirectDraw mode the image is digitized in the DirectDraw buffer.
+            #self.nRet = ueye.is_FreezeVideo(self.cam, ueye.IS_WAIT)
+            #if self.nRet != ueye.IS_SUCCESS:
+                #raise uEyeException(self.nRet)
+                
+            t = time.time()
+            img_buffer = ImageBuffer()
+            self.nRet = ueye.is_WaitForNextImage(self.cam,
+                                                 timeout,
+                                                 img_buffer.mem_ptr,
+                                                 img_buffer.mem_id)
+            print(self.nRet)
+            if self.nRet == ueye.IS_SUCCESS:
+                mem_info = MemoryInfo(self.cam, img_buffer)
+                array = ueye.get_data(img_buffer.mem_ptr, mem_info.width, mem_info.height, mem_info.bits, mem_info.pitch, copy=True)
+                queue.append(array)
+            
+            
+            FPS = 1/(t - t_old)
+            print("FPS: ", round(FPS, 2))
+            t_old = t
+        
+            
+        # Add the image to the queue
+        #queue.append(array)
+
+    def Save(self, queue):
+        if(len(queue)):
+            t_save_old = timeit.default_timer()
+            filename = "Camera" + str(self.camID) + "-" + str(time.time())
+            array = queue.pop(0)
+            reshape = np.reshape(array, (self.height.value, 
+                                         self.width.value, 
+                                         self.bytes_per_pixel))
+            Image.fromarray(reshape).save("/home/fieldtronics/swim4all/Tirocinio/Photo/" + filename + ".png", "PNG")
+            t_save = timeit.default_timer()
+            print("Salvataggio: ", t_save - t_save_old)
+        else:
+            pass
 
     def exit(self):
         if self.cam is not None:

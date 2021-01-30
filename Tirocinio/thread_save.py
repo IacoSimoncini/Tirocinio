@@ -17,7 +17,7 @@ class Save_Thread(threading.Thread):
         self.camera = cam
         self.queue = queue
         self.isRunning = False
-        self.isJoined = False
+        self.joined = False
         self.t_old = timeit.default_timer()
 
     def run(self):
@@ -37,5 +37,5 @@ class Save_Thread(threading.Thread):
     def kill(self):
         self.isRunning = False
 
-    def joined(self):
-        self.isJoined = True
+    def isJoined(self):
+        self.joined = True

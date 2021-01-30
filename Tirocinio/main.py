@@ -15,31 +15,33 @@ queue = []
 dev = ["Camera" + str(id[0]), "Camera" + str(id[1]), "Camera" + str(id[2])]
 
 # Initialize Cameras with specific id
-Cam0 = camera.Cam(id[0])
+Cam0 = camera.Cam(id[0], 20)
 
 # Setup cameras 
 Cam0.Setup()
 
-p = tc.Capture_Thread(Cam0, queue)
-s = ts.Save_Thread(Cam0, queue)
-p.start()
-s.start()
+#p = tc.Capture_Thread(Cam0, queue)
+#s = ts.Save_Thread(Cam0, queue)
+#p.start()
+#s.start()
 
 # Continuous capture and saving of the image
 while Cam0.nRet == ueye.IS_SUCCESS: 
     try:
+        
+        Cam0.Capture(queue)
 
-        if not p.joined:
-            p.join()
-            print("p joined")
+        #if not p.joined:
+            #p.join()
+            #print("p joined")
 
         #if not s.joined:
             #s.join()
             #print("s joined")
         
-    except Exception:
-        p.kill()
-        s.kill()
+    except KeyboardInterrupt:
+        #p.kill()
+        #s.kill()
         break
 
 # Releases an image memory that was allocated using is_AllocImageMem() and removes it from the driver management
