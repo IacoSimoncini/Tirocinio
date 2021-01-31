@@ -247,11 +247,6 @@ class Cam:
         if self.nRet != ueye.IS_SUCCESS:
             raise uEyeException(self.nRet)
         return [float(1/maxi), float(1/mini)]
-
-    def free_run_mode(self):
-        self.nRet = ueye.is_CaptureVideo(self.cam, ueye.IS_DONT_WAIT)
-        if self.nRet != ueye.IS_SUCCESS:
-            raise uEyeException(self.nRet)
     
     def set_pixelclock(self, pixelclock):
         """
@@ -335,6 +330,11 @@ class Cam:
                                             ueye.IS_TRIGGER_MISSED,
                                             ueye.IS_GET_STATUS)
         print("error_code: ",error_code)
+        
+    def unlock_seq(self, mem_id, mem_ptr):
+        self.nRet = ueye.is_UnlockSeqBuf(self.cam, mem_id, mem_ptr)
+        if self.nRet != ueye.IS_SUCCESS:
+            raise uEyeException(self.nRet)
 
     def alloc(self):
         """
@@ -428,8 +428,3 @@ class Cam:
         if self.nRet == ueye.IS_SUCCESS:
             self.cam = None
         print("Camera exit.")
-
-    def free_run_acquisition(self):
-        img = ueye.get_data(self.pcImageMemory, self.width, self.height, self.nBitsPerPixel, self.pitch, copy=True)
-        reshape = np.reshape(img, (self.height.value, self.width.value, self.bytes_per_pixel))
-

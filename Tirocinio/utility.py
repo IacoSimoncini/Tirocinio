@@ -64,5 +64,4 @@ class MemoryInfo:
                                       self.bits, self.pitch)
 
         if nRet != ueye.IS_SUCCESS:
-            raise uEyeException(nRet)                          
-
+            raise uEyeException(nRet)     

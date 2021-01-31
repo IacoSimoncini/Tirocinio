@@ -3,9 +3,8 @@ import camera
 from pyueye import ueye
 import thread_capture as tc
 import numpy as np
-import timeit
 import time
-from PIL import Image
+import cv2
 
 class Save_Thread(threading.Thread):
     """ 
@@ -18,18 +17,17 @@ class Save_Thread(threading.Thread):
         self.queue = queue
         self.isRunning = False
         self.joined = False
-        self.t_old = timeit.default_timer()
 
     def run(self):
         self.isRunning = True
         while self.isRunning:
             if(len(self.queue)):
-                t_save_old = timeit.default_timer()
-                filename = "Camera" + str(self.camera.camID) + "-" + str(time.time())
+                t_save_old = time.time()
+                filename = "/home/fieldtronics/swim4all/Tirocinio/Photo/Camera" + str(self.camera.camID) + "-" + str(time.time()) + ".png"
                 array = self.queue.pop(0)
                 reshape = np.reshape(array, (self.camera.height.value, self.camera.width.value, self.camera.bytes_per_pixel))
-                Image.fromarray(reshape).save("/home/fieldtronics/swim4all/Tirocinio/Photo/" + filename + ".png", "PNG")
-                t_save = timeit.default_timer()
+                cv2.imwrite(filename, reshape)
+                t_save = time.time()
                 print("Salvataggio: ", t_save - t_save_old)
             else:
                 pass
