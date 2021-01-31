@@ -77,10 +77,7 @@ class Cam:
         self.set_pixelclock(self.pixelclock)
         
         # Set Exposure
-        self.set_exposure(self.exposure)  
-
-        # Set fps
-        #self.set_fps(self.current_fps)     
+        self.set_exposure(self.exposure)    
 
         # Set display mode to DIB
         self.nRet = ueye.is_SetDisplayMode(self.cam, ueye.IS_SET_DM_DIB)
@@ -93,10 +90,7 @@ class Cam:
             raise uEyeException(self.nRet)
 
         # Set AOI
-        self.nRet = ueye.is_AOI(self.cam, 
-                                ueye.IS_AOI_IMAGE_SET_AOI, 
-                                self.rectAOI,
-                                ueye.sizeof(self.rectAOI))
+        self.nRet = ueye.is_AOI(self.cam, ueye.IS_AOI_IMAGE_SET_AOI, self.rectAOI, ueye.sizeof(self.rectAOI))
         if self.nRet != ueye.IS_SUCCESS:
             raise uEyeException(self.nRet)
 
@@ -119,12 +113,23 @@ class Cam:
 
         self.alloc()
 
-        self.nRet = ueye.is_CaptureVideo(self.cam, ueye.IS_WAIT)
+        self.nRet = self.capture_video()
         if self.nRet != ueye.IS_SUCCESS:
             raise uEyeException(self.nRet)
 
         print("Press \'Ctrl + C\' to leave the programm")
         print()
+
+    def capture_video(self, wait=True):
+        """
+        Begin capturing a video in trigger mode (wait=True) or free run (wait=False).
+        Parameters
+        ==========
+        wait: boolean
+           To wait or not for the camera frames (default to True).
+        """
+        wait_param = ueye.IS_WAIT if wait else ueye.IS_DONT_WAIT
+        return ueye.is_CaptureVideo(self.cam, wait_param)
 
     def set_gain(self, mGain, rGain, gGain, bGain):
         """
@@ -196,6 +201,10 @@ class Cam:
             raise uEyeException(self.nRet)
 
     def get_framerate(self):
+        """
+        Get frame rate.
+        Only in free run mode.
+        """
         new_fps = ueye.c_double(self.current_fps)
         self.nRet = ueye.is_GetFramesPerSecond(self.cam, new_fps)
         if self.nRet != ueye.IS_SUCCESS:
@@ -326,6 +335,9 @@ class Cam:
         return pixelclock
 
     def trigger_miss(self):
+        """
+        Check if a trigger miss event occurs.
+        """
         error_code = ueye.is_CameraStatus(self.cam, 
                                             ueye.IS_TRIGGER_MISSED,
                                             ueye.IS_GET_STATUS)
@@ -367,62 +379,24 @@ class Cam:
 
 
     def capture_status(self):
+        """
+        Check capture status.
+        Returns
+        =======
+        nRet: integer
+            Capture status.
+        """
         info = ueye.c_uint()
-        self.nRet = ueye.is_CaptureStatus(self.cam, 
+        nRet = ueye.is_CaptureStatus(self.cam, 
                                           ueye.IS_CAPTURE_STATUS_INFO_CMD_GET,
                                           info,
                                           ueye.sizeof(info))
-
-    def Capture(self, queue):
-
-        t_old = time.time()
-        
-        timeout = 1000
-
-
-        while True:
-
-            # Digitalize an immage and transfers it to the active image memory. In DirectDraw mode the image is digitized in the DirectDraw buffer.
-            #self.nRet = ueye.is_FreezeVideo(self.cam, ueye.IS_WAIT)
-            #if self.nRet != ueye.IS_SUCCESS:
-                #raise uEyeException(self.nRet)
-                
-            t = time.time()
-            img_buffer = ImageBuffer()
-            self.nRet = ueye.is_WaitForNextImage(self.cam,
-                                                 timeout,
-                                                 img_buffer.mem_ptr,
-                                                 img_buffer.mem_id)
-            print(self.nRet)
-            if self.nRet == ueye.IS_SUCCESS:
-                mem_info = MemoryInfo(self.cam, img_buffer)
-                array = ueye.get_data(img_buffer.mem_ptr, mem_info.width, mem_info.height, mem_info.bits, mem_info.pitch, copy=True)
-                queue.append(array)
-            
-            
-            FPS = 1/(t - t_old)
-            print("FPS: ", round(FPS, 2))
-            t_old = t
-        
-            
-        # Add the image to the queue
-        #queue.append(array)
-
-    def Save(self, queue):
-        if(len(queue)):
-            t_save_old = timeit.default_timer()
-            filename = "Camera" + str(self.camID) + "-" + str(time.time())
-            array = queue.pop(0)
-            reshape = np.reshape(array, (self.height.value, 
-                                         self.width.value, 
-                                         self.bytes_per_pixel))
-            Image.fromarray(reshape).save("/home/fieldtronics/swim4all/Tirocinio/Photo/" + filename + ".png", "PNG")
-            t_save = timeit.default_timer()
-            print("Salvataggio: ", t_save - t_save_old)
-        else:
-            pass
+        return nRet
 
     def exit(self):
+        """
+        Close camera connection.
+        """
         if self.cam is not None:
             self.nRet = ueye.is_ExitCamera(self.cam)
         if self.nRet == ueye.IS_SUCCESS:

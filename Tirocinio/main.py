@@ -21,9 +21,9 @@ Cam0 = camera.Cam(id[0], 10)
 Cam0.Setup()
 
 p = tc.Capture_Thread(Cam0, queue)
-s = ts.Save_Thread(Cam0, queue)
+#s = ts.Save_Thread(Cam0, queue)
 p.start()
-s.start()
+#s.start()
 
 # Continuous capture and saving of the image
 while Cam0.nRet == ueye.IS_SUCCESS: 
@@ -35,13 +35,13 @@ while Cam0.nRet == ueye.IS_SUCCESS:
             p.join()
             print("p joined")
 
-        if not s.joined:
-            s.join()
-            print("s joined")
+        #if not s.joined:
+            #s.join()
+            #print("s joined")
         
     except KeyboardInterrupt:
         p.kill()
-        s.kill()
+        #s.kill()
         break
 
 # Releases an image memory that was allocated using is_AllocImageMem() and removes it from the driver management
