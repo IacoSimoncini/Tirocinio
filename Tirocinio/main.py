@@ -9,9 +9,6 @@ import threading
 # Cameras' id
 id = [1, 2, 3]
 
-# Queue of images
-queue = []
-
 dev = ["Camera" + str(id[0]), "Camera" + str(id[1]), "Camera" + str(id[2])]
 
 # Initialize Cameras with specific id
@@ -20,7 +17,8 @@ Cam0 = camera.Cam(id[0], 10)
 # Setup cameras 
 Cam0.Setup()
 
-p = tc.Capture_Thread(Cam0, queue)
+p = tc.Capture_Thread(Cam0)
+
 #s = ts.Save_Thread(Cam0, queue)
 p.start()
 #s.start()

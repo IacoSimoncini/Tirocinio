@@ -11,6 +11,7 @@
             "gain": 50,
             "rGain": 0,
             "bGain": 0,
-            "gGain": 0
+            "gGain": 0,
+            "directory_structure": 1
         }
 ]}

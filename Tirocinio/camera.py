@@ -4,7 +4,7 @@ import time
 import threading
 import numpy as np
 import json
-from utility import uEyeException, param_from_json, Rect, ImageBuffer, MemoryInfo
+from utility import param_from_json, Rect, ImageBuffer, MemoryInfo, error_log
 import ctypes
 import timeit
 
@@ -25,6 +25,7 @@ class Cam:
         self.bytes_per_pixel = int(self.nBitsPerPixel / 8)
         self.buffer_count = buffer_count
         self.img_buffer = []
+        self.mode_filename = 0
 
         self.pixelclock = 0
         self.exposure = 0
@@ -48,21 +49,21 @@ class Cam:
         # Starts the driver and establishes the connection to the camera
         self.nRet = ueye.is_InitCamera(self.cam, None)
         if self.nRet != ueye.IS_SUCCESS:
-            raise uEyeException(self.nRet)
+            error_log(self.nRet, "is_InitCamera")
         
         self.nRet = ueye.is_SetExternalTrigger(self.cam, ueye.IS_SET_TRIGGER_LO_HI)
         if self.nRet != ueye.IS_SUCCESS:
-            raise uEyeException(self.nRet) 
+            error_log(self.nRet, "is_SetExternalTrigger") 
 
         # You can query additional information about the sensor type used in the camera
         self.nRet = ueye.is_GetSensorInfo(self.cam, self.sInfo)
         if self.nRet != ueye.IS_SUCCESS:
-           raise uEyeException(self.nRet)
+           error_log(self.nRet, "is_GetSensorInfo")
 
         # Reads out the data hard-coded in the non-volatile camera memory and writes it to the data structure that cInfo points to
         self.nRet = ueye.is_GetCameraInfo(self.cam, self.cInfo)
         if self.nRet != ueye.IS_SUCCESS:
-           raise uEyeException(self.nRet)
+           error_log(self.nRet, "is_GetCameraInfo")
 
         # Set Auto Gain
         #self.set_gain_auto(1)
@@ -82,17 +83,17 @@ class Cam:
         # Set display mode to DIB
         self.nRet = ueye.is_SetDisplayMode(self.cam, ueye.IS_SET_DM_DIB)
         if self.nRet != ueye.IS_SUCCESS:
-            raise uEyeException(self.nRet)
+            error_log(self.nRet, "is_SetDisplayMode")
 
         # Set Color Mode to BGR8
         self.nRet = ueye.is_SetColorMode(self.cam, ueye.IS_CM_BGR8_PACKED)
         if self.nRet != ueye.IS_SUCCESS:
-            raise uEyeException(self.nRet)
+            error_log(self.nRet, "is_SetColorMode")
 
         # Set AOI
         self.nRet = ueye.is_AOI(self.cam, ueye.IS_AOI_IMAGE_SET_AOI, self.rectAOI, ueye.sizeof(self.rectAOI))
         if self.nRet != ueye.IS_SUCCESS:
-            raise uEyeException(self.nRet)
+            error_log(self.nRet, "is_AOI")
 
         self.width = self.rectAOI.s32Width
         self.height = self.rectAOI.s32Height
@@ -115,7 +116,7 @@ class Cam:
 
         self.nRet = self.capture_video()
         if self.nRet != ueye.IS_SUCCESS:
-            raise uEyeException(self.nRet)
+            error_log(self.nRet, "is_CaptureVideo")
 
         print("Press \'Ctrl + C\' to leave the programm")
         print()
@@ -152,7 +153,7 @@ class Cam:
                                             gGain,
                                             bGain)
         if self.nRet != ueye.IS_SUCCESS:
-            raise uEyeException(self.nRet)
+            error_log(self.nRet, "is_SetHardwareGain")
     
     def get_gain(self):
         """
@@ -198,7 +199,7 @@ class Cam:
                                     value,
                                     value_to_return)
         if self.nRet != ueye.IS_SUCCESS:
-            raise uEyeException(self.nRet)
+            error_log(self.nRet, "is_SetAutoParameter")
 
     def get_framerate(self):
         """
@@ -208,7 +209,7 @@ class Cam:
         new_fps = ueye.c_double(self.current_fps)
         self.nRet = ueye.is_GetFramesPerSecond(self.cam, new_fps)
         if self.nRet != ueye.IS_SUCCESS:
-            raise uEyeException(self.nRet)
+            error_log(self.nRet, "is_GetFramesPerSecond")
         print(new_fps.value)
 
     def set_fps(self, fps):
@@ -235,7 +236,7 @@ class Cam:
         new_fps = ueye.c_double()
         self.nRet = ueye.is_SetFrameRate(self.cam, fps, new_fps)
         if self.nRet != ueye.IS_SUCCESS:
-            raise uEyeException(self.nRet)
+            error_log(self.nRet, "is_SetFrameRate")
         self.current_fps = float(new_fps)
         return new_fps
 
@@ -254,7 +255,7 @@ class Cam:
                 self.cam,
                 mini, maxi, interv)
         if self.nRet != ueye.IS_SUCCESS:
-            raise uEyeException(self.nRet)
+            error_log(self.nRet, "is_GetFrameTimeRange")
         return [float(1/maxi), float(1/mini)]
     
     def set_pixelclock(self, pixelclock):
@@ -271,7 +272,7 @@ class Cam:
                                         PCrange,
                                         12)
         if self.nRet != ueye.IS_SUCCESS:
-            raise uEyeException(self.nRet)
+            error_log(self.nRet, "is_PixelClock")
         pcmin, pcmax, pcincr = PCrange
         if pixelclock < pcmin:
             pixelclock = pcmin
@@ -286,7 +287,7 @@ class Cam:
                                         ueye.IS_PIXELCLOCK_CMD_SET,
                                         pixelclock, 4)
         if self.nRet != ueye.IS_SUCCESS:
-            raise uEyeException(self.nRet)
+            error_log(self.nRet, "is_PixelClock")
 
     def set_exposure(self, exposure):
         """
@@ -302,7 +303,7 @@ class Cam:
                                         exposure,
                                         8)
         if self.nRet != ueye.IS_SUCCESS:
-            raise uEyeException(self.nRet)
+            error_log(self.nRet, "is_Exposure")
 
     def get_exposure(self):
         """
@@ -316,7 +317,7 @@ class Cam:
         self.nRet = ueye.is_Exposure(self.cam, ueye.IS_EXPOSURE_CMD_GET_EXPOSURE,
                                exposure,  8)
         if self.nRet != ueye.IS_SUCCESS:
-            raise uEyeException(self.nRet)
+            error_log(self.nRet, "is_Exposure")
         return exposure
 
     def get_pixelclock(self):
@@ -331,7 +332,7 @@ class Cam:
         self.nRet = ueye.is_PixelClock(self.cam, ueye.IS_PIXELCLOCK_CMD_GET,
                                         pixelclock, 4)
         if self.nRet != ueye.IS_SUCCESS:
-            raise uEyeException(self.nRet)
+            error_log(self.nRet, "is_PixelClock")
         return pixelclock
 
     def trigger_miss(self):
@@ -346,7 +347,7 @@ class Cam:
     def unlock_seq(self, mem_id, mem_ptr):
         self.nRet = ueye.is_UnlockSeqBuf(self.cam, mem_id, mem_ptr)
         if self.nRet != ueye.IS_SUCCESS:
-            raise uEyeException(self.nRet)
+            error_log(self.nRet, "is_UnlockSeqBuf")
 
     def alloc(self):
         """
@@ -358,7 +359,7 @@ class Cam:
         for buff in self.img_buffer:
             self.nRet = ueye.is_FreeImageMem(self.cam, buff.mem_ptr, buff.mem_id)
             if self.nRet != ueye.IS_SUCCESS:
-                raise uEyeException(self.nRet)
+                error_log(self.nRet, "is_FreeImageMem")
         
         self.img_buffer = []
 
@@ -375,7 +376,7 @@ class Cam:
 
         self.nRet = ueye.is_InitImageQueue(self.cam, 0)
         if self.nRet != ueye.IS_SUCCESS:
-            raise uEyeException(self.nRet)
+            error_log(self.nRet, "is_InitImageQueue")
 
 
     def capture_status(self):
