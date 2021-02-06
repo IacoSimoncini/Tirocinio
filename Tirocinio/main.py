@@ -3,8 +3,8 @@ from pyueye import ueye
 import asyncio
 import camera
 import thread_capture as tc
-import thread_save as ts
 import threading
+import os
 
 # Cameras' id
 id = [1, 2, 3]
@@ -46,3 +46,5 @@ while Cam0.nRet == ueye.IS_SUCCESS:
 ueye.is_FreeImageMem(Cam0.cam, Cam0.pcImageMemory, Cam0.MemID)
 
 Cam0.exit()
+
+os.system("ffmpeg -r 1 -i /home/pi/swim4all/Tirocinio/Photo/5-2-2021/*.png -vcodec mpeg4 -y movie.mp4")

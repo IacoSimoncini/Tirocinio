@@ -31,7 +31,7 @@ def param_from_json(cam):
     cam: Cam
         IDS camera
     """
-    with open('/home/fieldtronics/swim4all/Tirocinio/Tirocinio/config.json') as json_file:
+    with open('/home/pi/swim4all/Tirocinio/Tirocinio/config.json') as json_file:
         data = json.load(json_file)
         for j in data['config']:
             cam.rectAOI.s32Width = ueye.int(j['width'])
@@ -46,6 +46,7 @@ def param_from_json(cam):
             cam.bGain = j['bGain']
             cam.gGain = j['gGain']
             cam.mode_filename = j['directory_structure']
+            cam.m_nColorMode = j['color_mode']
 
 class Rect:
     def __init__(self, x=0, y=0, width=0, height=0):

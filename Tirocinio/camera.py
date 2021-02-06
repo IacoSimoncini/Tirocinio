@@ -8,6 +8,28 @@ from utility import param_from_json, Rect, ImageBuffer, MemoryInfo, error_log
 import ctypes
 import timeit
 
+bits_per_pixel = {ueye.IS_CM_SENSOR_RAW8: 8,
+                  ueye.IS_CM_SENSOR_RAW10: 16,
+                  ueye.IS_CM_SENSOR_RAW12: 16,
+                  ueye.IS_CM_SENSOR_RAW16: 16,
+                  ueye.IS_CM_MONO8: 8,
+                  ueye.IS_CM_RGB8_PACKED: 24,
+                  ueye.IS_CM_BGR8_PACKED: 24,
+                  ueye.IS_CM_RGBA8_PACKED: 32,
+                  ueye.IS_CM_BGRA8_PACKED: 32,
+                  ueye.IS_CM_BGR10_PACKED: 32,
+                  ueye.IS_CM_RGB10_PACKED: 32,
+                  ueye.IS_CM_BGRA12_UNPACKED: 64,
+                  ueye.IS_CM_BGR12_UNPACKED: 48,
+                  ueye.IS_CM_BGRY8_PACKED: 32,
+                  ueye.IS_CM_BGR565_PACKED: 16,
+                  ueye.IS_CM_BGR5_PACKED: 16,
+                  ueye.IS_CM_UYVY_PACKED: 16,
+                  ueye.IS_CM_UYVY_MONO_PACKED: 16,
+                  ueye.IS_CM_UYVY_BAYER_PACKED: 16,
+                  ueye.IS_CM_CBYCRY_PACKED: 16}
+                  
+
 class Cam:
     def __init__(self, camID, buffer_count=3):
         # Variables
@@ -18,10 +40,9 @@ class Cam:
         self.MemID = ueye.int()
         self.rectAOI = ueye.IS_RECT()
         self.pitch = ueye.INT()
-        self.nBitsPerPixel = ueye.INT(24)
+        self.nBitsPerPixel = ueye.INT(8)
         self.channels = 3
-        self.m_nColorMode = ueye.IS_CM_RGBA12_UNPACKED
-        self.nBitsPerPixel
+        self.m_nColorMode = ueye.IS_CM_SENSOR_RAW8
         self.bytes_per_pixel = int(self.nBitsPerPixel / 8)
         self.buffer_count = buffer_count
         self.img_buffer = []
@@ -85,8 +106,10 @@ class Cam:
         if self.nRet != ueye.IS_SUCCESS:
             error_log(self.nRet, "is_SetDisplayMode")
 
+        self.get_bit_per_pixel(self.m_nColorMode)
+
         # Set Color Mode to BGR8
-        self.nRet = ueye.is_SetColorMode(self.cam, ueye.IS_CM_BGR8_PACKED)
+        self.nRet = ueye.is_SetColorMode(self.cam, self.m_nColorMode)
         if self.nRet != ueye.IS_SUCCESS:
             error_log(self.nRet, "is_SetColorMode")
 
@@ -110,6 +133,8 @@ class Cam:
         print("rGain:\t\t\t", self.rGain)
         print("bGain:\t\t\t", self.bGain)
         print("gGain:\t\t\t", self.gGain)
+        print("Color mode:\t\t", self.m_nColorMode)
+        print("Bits per pixel:\t\t", int(self.bits_per_pixel))
         print()
 
         self.alloc()
@@ -155,6 +180,19 @@ class Cam:
         if self.nRet != ueye.IS_SUCCESS:
             error_log(self.nRet, "is_SetHardwareGain")
     
+    def get_bit_per_pixel(self, color_mode):
+        """
+        Returns the number of bits per pixel for the given color mode.
+        """
+        if color_mode not in bits_per_pixel.keys():
+            print(f"Unknown color mode: {color_mode}")
+            print("It will be set to default value")
+            self.bits_per_pixel = ueye.INT(bits_per_pixel[11])
+            self.m_nColorMode = ueye.IS_CM_SENSOR_RAW8
+        else:
+            self.bits_per_pixel = ueye.INT(bits_per_pixel[color_mode])
+            
+        
     def get_gain(self):
         """
         Get the current gain.
@@ -402,4 +440,5 @@ class Cam:
             self.nRet = ueye.is_ExitCamera(self.cam)
         if self.nRet == ueye.IS_SUCCESS:
             self.cam = None
+        print()
         print("Camera exit.")
